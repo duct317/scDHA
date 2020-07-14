@@ -1,5 +1,5 @@
 # scDHA
-The scDHA software package conducts cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference. scDHA currently supports Linux.
+The scDHA software package conducts cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference. scDHA currently supports macOS and Linux.
 # How to install
 - The package can be installed from this repository.
 - Install devtools: `utils::install.packages('devtools')`
