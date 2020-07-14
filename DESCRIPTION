@@ -1,0 +1,16 @@
+Package: scDHA
+Type: Package
+Title: single-cell Decomposition using Hierarchical Autoencoder 
+Version: 0.1.0
+Author: Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu and Tin Nguyen
+Maintainer: Duc Tran <duct@nevada.unr.edu>
+Description: Provide a fast and accurate pipeline for single-cell analyses. 
+    The scDHA software package conducts cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference.
+    scDHA currently supports Linux.
+License: LGPL
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.4)
+Imports: matrixStats, foreach, keras, tensorflow, doParallel, igraph, Matrix, caret, cluster, clusterCrit, Rcpp, RcppParallel, RcppAnnoy, methods
+LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
+RoxygenNote: 7.1.0

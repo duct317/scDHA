@@ -1,0 +1,198 @@
+#' @importFrom igraph graph.data.frame cluster_louvain membership modularity
+phenograph <- function(data, k=30){
+  if(is.data.frame(data))
+    data <- as.matrix(data)
+  
+  if(!is.matrix(data))
+    stop("Wrong input data, should be a data frame of matrix!")
+  
+  if(k<1){
+    stop("k must be a positive integer!")
+  }else if (k > nrow(data)-2){
+    stop("k must be smaller than the total number of points!")
+  }
+  
+  message("Run Rphenograph starts:","\n", 
+          "  -Input data of ", nrow(data)," rows and ", ncol(data), " columns","\n",
+          "  -k is set to ", k)
+  
+  cat("  Finding nearest neighbors...")
+  t1 <- system.time(neighborMatrix <- find_neighbors(data, k=k+1)[,-1])
+  cat("DONE ~",t1[3],"s\n", " Compute jaccard coefficient between nearest-neighbor sets...")
+  t2 <- system.time(links <- jaccard_coeff(neighborMatrix))
+  
+  cat("DONE ~",t2[3],"s\n", " Build undirected graph from the weighted links...")
+  links <- links[links[,1]>0, ]
+  relations <- as.data.frame(links)
+  colnames(relations)<- c("from","to","weight")
+  t3 <- system.time(g <- graph.data.frame(relations, directed=FALSE))
+
+  cat("DONE ~",t3[3],"s\n", " Run louvain clustering on the graph ...")
+  t4 <- system.time(community <- igraph::cluster_louvain(g)) #cluster_louvain(g))
+  cat("DONE ~",t4[3],"s\n")
+  
+  message("Run Rphenograph DONE, totally takes ", sum(c(t1[3],t2[3],t3[3],t4[3])), "s.")
+  cat("  Return a community class\n  -Modularity value:", modularity(community),"\n")
+  cat("  -Number of clusters:", length(unique(membership(community))))
+  
+  return(list(g, community))
+}
+
+find_neighbors <- function(data, k){
+  nearest <- find_nn(data, k)$idx
+  return(nearest)
+}
+
+#' @import RcppAnnoy
+find_nn <- function(X, k, 
+                    metric = "euclidean",
+                    n_trees = 50, search_k = 2 * k * n_trees,
+                    tmpdir = tempdir(),
+                    n_threads = 0,
+                    ret_index = FALSE,
+                    verbose = FALSE) {
+  
+  res <- annoy_nn(X,
+                  k = k,
+                  metric = metric,
+                  n_trees = n_trees, search_k = search_k,
+                  tmpdir = tmpdir,
+                  n_threads = n_threads,
+                  ret_index = ret_index,
+                  verbose = verbose)
+  
+  
+  res
+}
+
+
+annoy_nn <- function(X, k = 10,
+                     metric = "euclidean",
+                     n_trees = 50, search_k = 2 * k * n_trees,
+                     tmpdir = tempdir(),
+                     n_threads = NULL,
+                     grain_size = 1,
+                     ret_index = FALSE,
+                     verbose = FALSE) {
+  if (is.null(n_threads)) {
+    n_threads <- default_num_threads()
+  }
+  ann <- annoy_build(X,
+                     metric = metric, n_trees = n_trees,
+                     verbose = verbose
+  )
+  
+  res <- annoy_search(X,
+                      k = k, ann = ann, search_k = search_k,
+                      tmpdir = tmpdir,
+                      n_threads = n_threads,
+                      grain_size = grain_size, verbose = verbose
+  )
+  
+  nn_acc <- sum(res$idx == 1:nrow(X)) / nrow(X)
+  tsmessage("Annoy recall = ", formatC(nn_acc * 100.0), "%")
+  
+  res <- list(idx = res$idx, dist = res$dist, recall = nn_acc)
+  if (ret_index) {
+    res$index <- ann
+  }
+  res
+}
+
+annoy_build <- function(X, metric = "euclidean", n_trees = 50,
+                        verbose = FALSE) {
+  nr <- nrow(X)
+  nc <- ncol(X)
+  
+  ann <- create_ann(metric, nc)
+  
+  tsmessage(
+    "Building Annoy index with metric = ", metric,
+    ", n_trees = ", n_trees
+  )
+  
+  # Add items
+  for (i in 1:nr) {
+    ann$addItem(i - 1, X[i, ])
+  }
+  
+  # Build index
+  ann$build(n_trees)
+  
+  ann
+}
+
+#' @importFrom methods new
+# create RcppAnnoy class from metric name with ndim dimensions
+create_ann <- function(name, ndim) {
+  ann <- switch(name,
+                cosine =  methods::new(RcppAnnoy::AnnoyAngular, ndim),
+                manhattan = methods::new(RcppAnnoy::AnnoyManhattan, ndim),
+                euclidean = methods::new(RcppAnnoy::AnnoyEuclidean, ndim),
+                hamming = methods::new(RcppAnnoy::AnnoyHamming, ndim),
+                stop("BUG: unknown Annoy metric '", name, "'")
+  )
+  ann
+}
+
+# Search a pre-built Annoy index for neighbors of X
+annoy_search <- function(X, k, ann,
+                         search_k = 100 * k,
+                         tmpdir = tempdir(),
+                         n_threads = NULL,
+                         grain_size = 1,
+                         verbose = FALSE) {
+  if (is.null(n_threads)) {
+    n_threads <- default_num_threads()
+  }
+  
+  res <- annoy_search_serial(
+    X = X, k = k, ann = ann,
+    search_k = search_k,
+    verbose = verbose
+  )
+  
+  # Convert from Angular to Cosine distance
+  if (methods::is(ann, "Rcpp_AnnoyAngular")) {
+    res$dist <- 0.5 * (res$dist * res$dist)
+  }
+  
+  res
+}
+
+annoy_search_serial <- function(X, k, ann,
+                                search_k = 100 * k,
+                                verbose = FALSE) {
+  tsmessage("Searching Annoy index, search_k = ", search_k)
+  nr <- nrow(X)
+  
+  idx <- matrix(nrow = nr, ncol = k)
+  dist <- matrix(nrow = nr, ncol = k)
+  for (i in 1:nr) {
+    res <- ann$getNNsByVectorList(X[i, ], k, search_k, TRUE)
+    if (length(res$item) != k) {
+      stop(
+        "search_k/n_trees settings were unable to find ", k,
+        " neighbors for item ", i
+      )
+    }
+    idx[i, ] <- res$item
+    dist[i, ] <- res$distance
+  }
+  list(idx = idx + 1, dist = dist)
+}
+
+
+tsmessage <- function(..., domain = NULL, appendLF = TRUE, force = FALSE,
+                      time_stamp = TRUE) {
+  verbose <- get0("verbose", envir = sys.parent())
+  
+  if (force || (!is.null(verbose) && verbose)) {
+    msg <- ""
+    if (time_stamp) {
+      msg <- paste0(stime(), " ")
+    }
+    message(msg, ..., domain = domain, appendLF = appendLF)
+    utils::flush.console()
+  }
+}
