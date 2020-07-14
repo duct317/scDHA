@@ -17,3 +17,13 @@ The scDHA software package conducts cell segregation through unsupervised learni
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
 - The clustering result can be found here: `cluster <- result$cluster`
 - Calculating adjusted Rand Index using mclust package: `mclust::adjustedRandIndex(cluster,label)`
+
+# How to use the package for new data 
+To use our package for new data, the package includes these functions:
+- scDHA: main function, doing dimension reuction and clustering. The input is a matrix with rows as samples and columns as genes.
+- scDHA.w: plot the normalized weights to select suitable cutoff for gene filtering.
+- scDHA.vis: visualization. The input is demension reduction output.
+- scDHA.pt: generating pseudotime. The input is demension reduction output.
+- scDHA.clas: classification new data using available one. The inputs consist of train data matrix, train data label and new data matrix. 
+- The result is reproducible by setting seed for these functions.
+- More detail about parameters for each function could be found in the manual.
