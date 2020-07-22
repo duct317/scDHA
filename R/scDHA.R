@@ -1,6 +1,6 @@
 #' @import keras tensorflow doParallel
 #' @importFrom parallel makeCluster clusterEvalQ stopCluster
-#' @importFrom matrixStats colSums2 rowSds rowMeans2 rowMaxs rowMins colSds
+#' @importFrom matrixStats colSums2 rowSds rowMeans2 rowMaxs rowMins colSds colMins
 #' @importFrom stats predict
 #' @importFrom foreach %dopar% foreach
 #' @importFrom stats quantile
@@ -37,6 +37,17 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen
     }  else {
       if(max(data) - min(data) > 100)
       {
+        if(min(data) < 0)
+        {
+          if(nrow(data) == ncol(data))
+          {
+            data <- t(data)
+            data <- data - matrixStats::rowMins(data)
+            data <- t(data)
+          } else {
+            data <- data - matrixStats::colMins(data)
+          }
+        }
         data <- log2(data + 1)
       }
       data <- normalize_data_dense(data)
@@ -57,6 +68,17 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen
       
       if(max(data) - min(data) > 100)
       {
+        if(min(data) < 0)
+        {
+          if(nrow(data) == ncol(data))
+          {
+            data <- t(data)
+            data <- data - matrixStats::rowMins(data)
+            data <- t(data)
+          } else {
+            data <- data - matrixStats::colMins(data)
+          }
+        }
         data <- log2(data + 1)
       }
       
@@ -668,6 +690,18 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
 #' @param ncores Number of processor cores to use.
 #' @param seed Seed for reproducibility.
 #' @return A plot with normalized weights of all genes.
+#' @examples
+#' \donttest{
+#' #Generate weight variances for each genes
+#' weight_variance <- scDHA.w(data, seed = 1)
+#'
+#' #Plot weight variances for top 5,000 genes
+#' plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
+#'
+#' #Plot the change of weight variances for top 5,000 genes
+#' weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
+#' plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+#' }
 #' @export
 scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
   K = 3
@@ -677,15 +711,60 @@ scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
   k = NULL
   if(nrow(data) >= 50000)
   {
-    if(sparse) data <- normalize_data_sparse(data) else data <- normalize_data_dense(data)
+    if(sparse) {
+      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(max(data) - min(data) > 100)
+      {
+        data@x <- log2(data@x + 1)
+      }
+      data <- normalize_data_sparse(data)
+    }  else {
+      if(max(data) - min(data) > 100)
+      {
+        if(min(data) < 0)
+        {
+          if(nrow(data) == ncol(data))
+          {
+            data <- t(data)
+            data <- data - matrixStats::rowMins(data)
+            data <- t(data)
+          } else {
+            data <- data - matrixStats::colMins(data)
+          }
+        }
+        data <- log2(data + 1)
+      }
+      data <- normalize_data_dense(data)
+    } 
     gc()
     res <- scDHA.big.w(data = data, k = k, K = K, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
   } else {
     if(sparse) {
+      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(max(data) - min(data) > 100)
+      {
+        data@x <- log2(data@x + 1)
+      }
       data <- normalize_data_sparse(data)
       data <- as.matrix(data)
     } else {
       data <- data[,non_zero_index(data)+1] #data[,non.zero.prop>0.]
+      
+      if(max(data) - min(data) > 100)
+      {
+        if(min(data) < 0)
+        {
+          if(nrow(data) == ncol(data))
+          {
+            data <- t(data)
+            data <- data - matrixStats::rowMins(data)
+            data <- t(data)
+          } else {
+            data <- data - matrixStats::colMins(data)
+          }
+        }
+        data <- log2(data + 1)
+      }
       
       tmp.max <- rowMaxs(data)
       tmp.min <- rowMins(data)
@@ -699,7 +778,9 @@ scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
   w <- (w - min(w))/(max(w) - min(w))
   w <- sort(w, decreasing = T)
   
-  plot(w, xlab = "Genes", ylab = "Normalized Weight")
+  plot(w, xlab = "Genes", ylab = "Normalized Weight Variance")
+  
+  w
 }
 
 scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
@@ -891,7 +972,6 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = T,
   or
   
 }
-
 
 
 

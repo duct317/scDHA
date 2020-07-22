@@ -21,3 +21,16 @@ A plot with normalized weights of all genes.
 \description{
 This function will plot a graph with normalized weights of all genes so user can select the appropriate number of genes to keep.
 }
+\examples{
+\donttest{
+#Generate weight variances for each genes
+weight_variance <- scDHA.w(data, seed = 1)
+
+#Plot weight variances for top 5,000 genes
+plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
+
+#Plot the change of weight variances for top 5,000 genes
+weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
+plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+}
+}
