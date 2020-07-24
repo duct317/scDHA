@@ -6,7 +6,7 @@ Author: Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu and Tin 
 Maintainer: Duc Tran <duct@nevada.unr.edu>
 Description: Provide a fast and accurate pipeline for single-cell analyses. 
     The scDHA software package conducts cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference.
-    scDHA currently supports Linux.
+    scDHA currently supports macOS and Linux.
 License: LGPL
 Encoding: UTF-8
 LazyData: true
