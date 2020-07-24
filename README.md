@@ -27,3 +27,6 @@ To use our package for new data, the package includes these functions:
 - scDHA.clas: classification new data using available one. The inputs consist of train data matrix, train data label and new data matrix. 
 - The result is reproducible by setting seed for these functions.
 - More detail about parameters for each function could be found in the manual.
+
+# Citation:
+Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2019). Fast and precise single-cell data analysis using hierarchical autoencoder. bioRxiv, 799817. doi: 10.1101/799817 ([link](https://www.biorxiv.org/content/10.1101/799817v2)) 
