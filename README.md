@@ -17,11 +17,12 @@ The scDHA software package conducts cell segregation through unsupervised learni
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
 - The clustering result can be found here: `cluster <- result$cluster`
 - Calculating adjusted Rand Index using mclust package: `mclust::adjustedRandIndex(cluster,label)`
+- R notebook for this example can be found in the Example folder at http://scdha.tinnguyen-lab.com/
 
 # How to use the package for new data 
 To use our package for new data, the package includes these functions:
 - scDHA: main function, doing dimension reuction and clustering. The input is a matrix with rows as samples and columns as genes.
-- scDHA.w: plot the normalized weights to select suitable cutoff for gene filtering.
+- scDHA.w: plot the normalized weight variances to select suitable cutoff for gene filtering (optional).
 - scDHA.vis: visualization. The input is demension reduction output.
 - scDHA.pt: generating pseudotime. The input is demension reduction output.
 - scDHA.clas: classification new data using available one. The inputs consist of train data matrix, train data label and new data matrix. 
@@ -29,4 +30,4 @@ To use our package for new data, the package includes these functions:
 - More detail about parameters for each function could be found in the manual.
 
 # Citation:
-Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2019). Fast and precise single-cell data analysis using hierarchical autoencoder. bioRxiv, 799817. doi: 10.1101/799817 ([link](https://www.biorxiv.org/content/10.1101/799817v2)) 
+Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2019). Fast and precise single-cell data analysis using hierarchical autoencoder. <i>bioRxiv</i>, 799817. doi: 10.1101/799817 ([link](https://www.biorxiv.org/content/10.1101/799817v2)) 
