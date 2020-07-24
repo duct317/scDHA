@@ -28,7 +28,7 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen
   if(nrow(data) >= 50000)
   {
     if(sparse) {
-      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
       if(max(data) - min(data) > 100)
       {
         data@x <- log2(data@x + 1)
@@ -56,7 +56,7 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen
     res <- scDHA.big(data = data, k = k, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
   } else {
     if(sparse) {
-      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
       if(max(data) - min(data) > 100)
       {
         data@x <- log2(data@x + 1)
@@ -712,7 +712,7 @@ scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
   if(nrow(data) >= 50000)
   {
     if(sparse) {
-      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
       if(max(data) - min(data) > 100)
       {
         data@x <- log2(data@x + 1)
@@ -740,7 +740,7 @@ scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
     res <- scDHA.big.w(data = data, k = k, K = K, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
   } else {
     if(sparse) {
-      if(min(data) < 0) message("The input must be a non negative sparse matrix.")
+      if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
       if(max(data) - min(data) > 100)
       {
         data@x <- log2(data@x + 1)
