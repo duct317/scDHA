@@ -3,8 +3,8 @@ The scDHA software package conducts cell segregation through unsupervised learni
 # How to install
 - The package can be installed from this repository.
 - Install devtools: `utils::install.packages('devtools')`
-- Install the package using: `devtools::install_github('duct317/scDHA')`
 - Install keras package version 2.2.4.1 using: `devtools::install_version('keras', version = '2.2.4.1', repos = 'https://cran.rstudio.com/')`
+- Install the package using: `devtools::install_github('duct317/scDHA')`
 - Install tensorflow and keras in python using: `keras::install_keras(tensorflow = "1.10.0")`
 - For more information about installation of keras, please visit https://keras.rstudio.com/
 
