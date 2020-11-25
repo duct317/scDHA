@@ -1,7 +1,7 @@
 Package: scDHA
 Type: Package
 Title: Single-cell Decomposition using Hierarchical Autoencoder 
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
     person("Duc", "Tran", , "duct@nevada.unr.edu", role = c("aut", "cre")),
     person("Hung", "Nguyen", role = c("aut")),
