@@ -1,5 +1,4 @@
 #' @importFrom matrixStats colMeans2 rowSums2
-#' @importFrom caret createFolds
 #' @title scDHA visulization
 #' @description  Generating 2D embeded data for visulation.
 #' @param sc Embedding object produced by the \code{scDHA} function.
@@ -17,19 +16,12 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
 
   cal.dis <- function(arg) {
     a <- arg
-    
     a2 <- k_square(a)
-    
     a2sum <- k_sum(a2, axis = -1)
-    
     dis <- k_expand_dims(a2sum) + a2sum
-    
     ab <- k_dot(a, k_transpose(a))
-    
     final.dis <- dis - 2 * ab
-    
     final.dis <- k_sqrt(final.dis+1e-6)
-    
     final.dis
   }
   
@@ -37,15 +29,10 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
   
   if(nrow(tmp.data > 50000)) {
     tmp <- find_nn(tmp.data, 11L)
-    
     D <- tmp$dist[, 2:11]
-    
     D[D==0] <- min(D[D!=0])
-    
     D <- 1/D
-    
     C <- tmp$idx[, 2:11]
-    
     g <- list(D = D, C = C)
   } else g <- calG(tmp.data, 10L)
   
@@ -100,14 +87,10 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
       if (is.null(seed))
       {
         config <- list()
-        
         config$intra_op_parallelism_threads <- ncores
         config$inter_op_parallelism_threads <- ncores
-        
         session_conf <- do.call(tf$ConfigProto, config)
-        
         sess <- tf$Session(graph = tf$get_default_graph(), config = session_conf)
-        
         k_set_session(session = sess)
       } else {
         set.seed((seed))
@@ -130,29 +113,19 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
       
       model_loss <- function(x_or, x_pred) {
         x_pred <- k_log(x_pred + 1)
-        
         x_pred <- (x_pred - k_mean(x_pred, axis = 1))/k_std(x_pred, axis = 1)
-        
         x_pred <- k_transpose(x_pred)
-        
         x_pred <- x_pred*k_abs(x_pred)/2
-        
         xent_loss <- k_exp( -x_pred )
-        
         xent_loss <- xent_loss*k_cast(k_greater(x_or, 0), k_floatx())
-        
         tmp <- k_sum(xent_loss, axis = -1)
-        
         xent_loss <- k_transpose( k_transpose(xent_loss)/tmp )
-        
         loss <- loss_kullback_leibler_divergence(x_or, xent_loss)
-        
         loss
       }
       
       
       model %>% compile(optimizer = optimizer_adam(5e-3, epsilon = 1e-4), loss = list(model_loss, loss_categorical_crossentropy), loss_weight = c(10, 1)) 
-      
       
       max.ite <- ceiling(50/(length(data.list)**(2/3)) )
       
@@ -168,11 +141,9 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
           for (idx in idxs) {
             
             tmp.sim.mat <- t(scale(t(sim.mat[idx, idx])))
-            
             sim.mat.dis <- tmp.sim.mat/2*abs(tmp.sim.mat)
             sim.mat.dis.exp <- exp(-sim.mat.dis)
             diag(sim.mat.dis.exp) <- 0
-            
             his <- model %>% train_on_batch(data[idx, ], list(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp), y1[idx, ]))
             
           }
@@ -236,21 +207,15 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
   nontop.pos <- unique(Reduce(c, lapply((1:length(count))[-top.pos], function(i) idx[[i]])))
   top.pos.real <- unique(Reduce(c, lapply(top.pos, function(i) idx[[i]])))
   
-  
-  
   if (length(nontop.pos) > 0) {
     nontop.top.sim <- cor(t(matrix(data[nontop.pos, ], nrow = length(nontop.pos))), t(top.pos.coor))
     
     for (i in 1:nrow(nontop.top.sim)) {
       idx.tmp <- which.max(nontop.top.sim[i, ])
-      
       idx.tmp <- idx[[top.pos[idx.tmp]]]
-      
       if (length(idx.tmp) > 1) {
         sim.mat.tmp <- cor(data[nontop.pos[i], ], t(data[idx.tmp, ]))
-        
         idx.tmp <- idx.tmp[order(sim.mat.tmp, decreasing = T)[1:min(5, length(idx.tmp)) ]]
-        
         pred.tmp[nontop.pos[i], ] <- colMeans2(pred[idx.tmp, ] )
       } else {
         pred.tmp[nontop.pos[i], ] <- pred[idx.tmp, ] 

@@ -23,6 +23,8 @@ scDHA(
 
 \item{sparse}{Boolen variable indicating whether data is a sparse matrix. The input must be a non negative sparse matrix.}
 
+\item{n}{Number of genes to keep after feature selection step.}
+
 \item{ncores}{Number of processor cores to use.}
 
 \item{gen_fil}{Boolean variable indicating whether to perform scDHA gene filtering before performing dimension deduction and clustering.}

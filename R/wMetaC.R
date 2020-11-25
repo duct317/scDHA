@@ -1,5 +1,4 @@
 #' @import cluster
-#'
 #' @importFrom utils combn
 #' @import clusterCrit
 #' @importFrom stats as.dist cutree hclust median
@@ -224,86 +223,7 @@ get_opt_hclust <- function(mat, hmethod, N.cluster, minN.cluster, maxN.cluster, 
     ch0 = intCriteria(data.matrix(mat), as.integer(v), "Calinski_Harabasz")
     CHind = unlist(ch0, use.names = F)  #convert a list to a vector/value
     optN.cluster = N.cluster
-  } else {
-    # if missing, automatically determine the number of clusters
-
-    my = mat
-    nn = nrow(my)#number of data
-    nc = minN.cluster:min(maxN.cluster, nrow(my) - 1)
-    #         cat("Testing numbers of clusters:", nc, "\n")
-    # cat('trying cluster number as: ', nc)
-    v = matrix(0, nrow = nrow(my), ncol = length(nc))  #for all different numbers of clusters
-    msil = rep(0, length(nc))  #declare a vector of zeros
-    # wss = rep(0, length(nc))#within-cluster sum of squares mdunn = rep(0, 39)#for
-    # dunn index mdb = rep(0, 39)#for dunn index
-    CHind = rep(0, length(nc))
-
-    # print(paste('The height for the top 10 are: ', tail(h$height, n = 10), sep =
-    # ''))
-
-    my1 = as.matrix(my)  #convert to full matrix
-    my = my1
-    tt = numeric(length(nc))
-    # cat(dim(my))
-    for (i in 1:length(nc)) {
-      # for(i in 1:1){ foreach(i=1:length(nc)) %dopar%{ cat('fast\n')
-
-      v[, i] = cutree(h, k = nc[i])  #for different numbers of clusters
-
-      sil = silhouette(v[, i], d)  #calculate the silhouette index
-
-      # msil[i] = mean(sil[,3])#the mean value of the index
-      msil[i] = median(sil[, 3])  #the mean value of the index
-      # cat(Sys.time(), '\n') mdunn[i] = dunn(d, v[,i])
-
-      # db = index.DB(d, cl = v[, i]) mdb[i] = db$DB
-
-      # #within-cluster sum of squares spl <- split(d, v[,i]) wss[i] <- sum(sapply(spl,
-      # wss))
-      CHind[i] = get_CH(my, v[, i], disMethod = "1-corr")
-
-
-    }
-
-    # corresponding to the max sil index
-    tmp = which(msil == max(msil))  #in case there are more than one maximum
-
-    if (length(tmp) > 1) {
-      oind = tmp[ceiling(length(tmp)/2)]
-    } else {
-      oind = tmp
-    }
-    cat("The maximum Silhouette index is", max(msil), "\n")
-
-    if(max(msil) <= sil.thre){
-      oind = which.max(CHind)
-      if (oind == 1) {
-        # if the maximum CH index with the minimum number of clusters, it's likely that
-        # the CH index is not reliable either
-        tmp = Matrix::tail(h$height, n = 10)  #the height
-        diftmp = diff(tmp)
-        flag = diftmp > (height.Ntimes - 1) * tmp[1:(length(tmp) - 1)]  #require the height is more than (height.Ntimes) times of the immediate consecutive one
-
-        if (any(flag)) {
-          # if any satifies the condition; make sure at least one satisfied
-          pind = which.max(flag)
-          opth = (tmp[pind] + tmp[pind + 1])/2  #the optimal height to cut
-          optv = cutree(h, h = opth)  #using the appropriate height to cut
-          oind = length(unique(optv)) - 1  #for consistency
-        }
-      }
-
-
-
-
-    }
-
-
-    f = v[, oind]  #the optimal clustering results
-    optN.cluster = length(unique(f))
-
-  }
-
+  } 
 
   hres = list()
   hres$f = f#optimal clustering results

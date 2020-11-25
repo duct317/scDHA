@@ -1,0 +1,121 @@
+---
+title: "scDHA package manual"
+author: "Duc Tran"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+
+editor_options:
+  chunk_output_type: inline
+vignette: >
+  %\VignetteIndexEntry{scDHA package manual}
+  %\VignetteEngine{knitr::knitr}
+  %\usepackage[UTF-8]{inputenc}
+
+---
+
+# Introduction
+Advances in microfluidics and sequencing technologies have allowed us to monitor biological systems at single-cell resolution. This comprehensive decomposition of complex tissues holds enormous potential in developmental biology and clinical research. However, the ever-increasing number of cells, technical noise, and high dropout rate pose significant computational challenges in scRNA-seq analysis.
+
+To address this problem, we introduce single-cell Decomposition using Hierarchical Autoencoder (scDHA), which can efficiently detach noise from informative biological signals. The scDHA pipeline consists of two core modules. The first module is a non-negative kernel autoencoder that provides a non-negative, part-based representation of the data. Based on the weight distribution of the encoder, scDHA removes genes or components that have insignificant contributions to the representation. The second module is a Stacked Bayesian Self-learning Network that is built upon the Variational Autoencoder to project the data onto a low dimensional space. Using this informative and compact representation, many analyses can be performed with high accuracy and tractable time complexity (mostly linear or lower complexity). 
+
+In one joint framework, the scDHA software package conducts cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference. 
+
+# Installation
+### Install scDHA package and other requirements
+```{r, eval=FALSE}
+#Install devtools: 
+utils::install.packages('devtools')
+
+#Install the package from GitHub:
+devtools::install_github('duct317/scDHA')
+#Or CRAN:
+utils::install.packages('scDHA')
+
+#Install tensorflow and keras in python using (install miniconda if necessary): 
+if(is(try(reticulate::conda_version()), "try-error")) reticulate::install_miniconda(force = T)
+keras::install_keras(method = "conda", tensorflow = "1.10.0")
+
+#For more information about installation of keras, please visit https://keras.rstudio.com/
+```
+
+### Install other necessary packages
+```{r, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+if (!requireNamespace("SingleCellExperiment", quietly = TRUE)) BiocManager::install("SingleCellExperiment")
+if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
+```
+
+
+# Analysis on Goolam dataset
+
+```{r, eval=FALSE}
+library(SingleCellExperiment)
+library(scDHA)
+#Load example data (Goolam dataset)
+data("Goolam")
+
+#Get data matrix and label
+data <- t(assay(Goolam)); label <- as.character(Goolam$cell_type1)
+
+#Log transform the data 
+data <- log2(data + 1)
+```
+
+### Clustering
+```{r, eval=FALSE}
+#Generate clustering result
+result <- scDHA(data, seed = 1)
+
+#The clustering result can be found here 
+cluster <- result$cluster
+
+#Calculate adjusted Rand Index using mclust package
+ari <- round(mclust::adjustedRandIndex(cluster,label), 2)
+print(paste0("ARI = ", ari))
+```
+
+### Visualization
+```{r, eval=FALSE}
+#Generate 2D representation
+result <- scDHA.vis(result, seed = 1)
+
+#Plot the representation of the dataset, different colors represent different cell types
+plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
+```
+
+### Time trajectory inference
+```{r, eval=FALSE}
+#Cell stage order in Goolam dataset
+cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
+
+#Generate pseudo-time for each cell
+result <- scDHA.pt(result, start.point = 1, seed = 1)
+
+#Calculate R-squared value representing correlation between inferred pseudo-time and cell stage order
+r2 <- round(cor(result$pt, as.numeric(factor(label, levels = cell.stages)))^2, digits = 2)
+
+#Plot pseudo-temporal ordering of cells in Goolam dataset
+plot(result$pt, factor(label, levels = cell.stages), xlab= "Pseudo Time", ylab = "Cell Stages", xaxt="n", yaxt="n")
+axis(2, at=1:5,labels=cell.stages, las=2)
+text(x = 1, y = 4.5, labels = paste0("R2 = ", r2))
+```
+
+### Cell classification
+```{r, eval=FALSE}
+#Split data into training and testing sets
+set.seed(1)
+idx <- sample.int(nrow(data), size = round(nrow(data)*0.75))
+
+train.x <- data[idx, ]; train.y <- label[idx]
+test.x <- data[-idx, ]; test.y <- label[-idx]
+
+#Predict the labels of cells in testing set
+prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, seed = 1)
+
+#Calculate accuracy of the predictions
+acc <- round(sum(test.y == prediction)/length(test.y), 2)
+print(paste0("Accuracy = ", acc))
+```
+

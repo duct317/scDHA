@@ -51,31 +51,15 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
   }
   res
   
-  # dis.tmp <- 1 - cor(t(tmp1), t(tmp))
-  # 
-  # res <- rep(0, nrow(data))
-  # res[ind] <- clus.tmp
-  # 
-  # for (i in 1:nrow(dis.tmp)) {
-  #   tmp2 <- order(dis.tmp[i,])[1:10]
-  #   tmp3 <- clus.tmp[tmp2]
-  #   res[ind1[i]] <- getmode(tmp3)
-  # 
-  # }
-  # res
 }
-
-
 
 getmode <- function(v) {
   uniqv <- unique(v)
   uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 
-
-nclusterPar <- function(data, nmax = 10) #, ncore = 2
+nclusterPar <- function(data, nmax = 10) 
 {
-  #doParallel::registerDoParallel(cores = ncore)
   result <- foreach (j = 1:10) %do% {
     set.seed(j)
     idx <- sample(1:nrow(data),min(500, nrow(data)))
@@ -99,7 +83,6 @@ nclusterPar <- function(data, nmax = 10) #, ncore = 2
     }
     c(which.max(to.test[,1]), which.max(to.test[,3]) )
   }
-  #doParallel::stopImplicitCluster()
   result <- t(data.frame(result))
   floor(mean(result)+0.5)
 
@@ -142,8 +125,6 @@ clustercom2 <- function(result)
     i <- i + 1
   }
 
-
-
   res <- t(data.frame(result$all))
   res <- res[idx,]
   cl.max <- floor(mean(apply(res, 1, function(x) length(unique(x)))) +0.5 )
@@ -166,12 +147,7 @@ clustercom2 <- function(result)
   test <- wMetaC(da, (cl.max + 1), hmethod = "ward.D") #
 
   test$finalC[indAll]
-
-
 }
-
-
-
 
 adjustedRandIndex <- function (x, y)
 {

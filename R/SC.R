@@ -1,5 +1,4 @@
 #' @importFrom igraph arpack decompose graph
-#' @importFrom caret createFolds
 #' @importFrom stats cor dnorm qnorm
 
 fast.table <- function (data)
@@ -21,7 +20,16 @@ fast.table <- function (data)
 }
 
 
-
+createFolds <- function(vec, k)
+{
+  rand.vec <- sample.int(length(vec), replace = F, n = length(vec))
+  tmp <- round(seq(1, max(vec), length.out = k+1))
+  res <- list()
+  for (i in 1:k) {
+    res[[i]] <- rand.vec[tmp[i]:tmp[i+1]]
+  }
+  res
+}
 
 mydist <- function(data, k = 20, distance = 2)
 {
@@ -42,9 +50,6 @@ mydist <- function(data, k = 20, distance = 2)
       D[idx[i],] <- dis.tmp[i,tmp1]
       C[idx[i],] <- tmp1
     }
-
-
-
   }
 
   list(D,C)

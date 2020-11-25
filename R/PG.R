@@ -48,7 +48,6 @@ find_nn <- function(X, k,
                     metric = "euclidean",
                     n_trees = 50, search_k = 2 * k * n_trees,
                     tmpdir = tempdir(),
-                    n_threads = 0,
                     ret_index = FALSE,
                     verbose = FALSE) {
   
@@ -57,7 +56,6 @@ find_nn <- function(X, k,
                   metric = metric,
                   n_trees = n_trees, search_k = search_k,
                   tmpdir = tmpdir,
-                  n_threads = n_threads,
                   ret_index = ret_index,
                   verbose = verbose)
   
@@ -70,13 +68,9 @@ annoy_nn <- function(X, k = 10,
                      metric = "euclidean",
                      n_trees = 50, search_k = 2 * k * n_trees,
                      tmpdir = tempdir(),
-                     n_threads = NULL,
                      grain_size = 1,
                      ret_index = FALSE,
                      verbose = FALSE) {
-  if (is.null(n_threads)) {
-    n_threads <- default_num_threads()
-  }
   ann <- annoy_build(X,
                      metric = metric, n_trees = n_trees,
                      verbose = verbose
@@ -85,12 +79,10 @@ annoy_nn <- function(X, k = 10,
   res <- annoy_search(X,
                       k = k, ann = ann, search_k = search_k,
                       tmpdir = tmpdir,
-                      n_threads = n_threads,
                       grain_size = grain_size, verbose = verbose
   )
   
   nn_acc <- sum(res$idx == 1:nrow(X)) / nrow(X)
-  tsmessage("Annoy recall = ", formatC(nn_acc * 100.0), "%")
   
   res <- list(idx = res$idx, dist = res$dist, recall = nn_acc)
   if (ret_index) {
@@ -105,11 +97,6 @@ annoy_build <- function(X, metric = "euclidean", n_trees = 50,
   nc <- ncol(X)
   
   ann <- create_ann(metric, nc)
-  
-  tsmessage(
-    "Building Annoy index with metric = ", metric,
-    ", n_trees = ", n_trees
-  )
   
   # Add items
   for (i in 1:nr) {
@@ -139,13 +126,9 @@ create_ann <- function(name, ndim) {
 annoy_search <- function(X, k, ann,
                          search_k = 100 * k,
                          tmpdir = tempdir(),
-                         n_threads = NULL,
                          grain_size = 1,
                          verbose = FALSE) {
-  if (is.null(n_threads)) {
-    n_threads <- default_num_threads()
-  }
-  
+
   res <- annoy_search_serial(
     X = X, k = k, ann = ann,
     search_k = search_k,
@@ -163,7 +146,6 @@ annoy_search <- function(X, k, ann,
 annoy_search_serial <- function(X, k, ann,
                                 search_k = 100 * k,
                                 verbose = FALSE) {
-  tsmessage("Searching Annoy index, search_k = ", search_k)
   nr <- nrow(X)
   
   idx <- matrix(nrow = nr, ncol = k)
@@ -180,19 +162,4 @@ annoy_search_serial <- function(X, k, ann,
     dist[i, ] <- res$distance
   }
   list(idx = idx + 1, dist = dist)
-}
-
-
-tsmessage <- function(..., domain = NULL, appendLF = TRUE, force = FALSE,
-                      time_stamp = TRUE) {
-  verbose <- get0("verbose", envir = sys.parent())
-  
-  if (force || (!is.null(verbose) && verbose)) {
-    msg <- ""
-    if (time_stamp) {
-      msg <- paste0(stime(), " ")
-    }
-    message(msg, ..., domain = domain, appendLF = appendLF)
-    utils::flush.console()
-  }
 }
