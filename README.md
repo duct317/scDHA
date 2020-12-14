@@ -18,7 +18,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
 - The clustering result can be found here: `cluster <- result$cluster`
 - Calculating adjusted Rand Index using mclust package: `mclust::adjustedRandIndex(cluster,label)`
-- A detailed tutorial on how to use scDHA package is available at http://scdha.tinnguyen-lab.com/
+- A detailed tutorial on how to use scDHA package is available at http://scdha.tinnguyen-lab.com/  
   Or, a vignette in R Notebook format is available [here](https://github.com/duct317/scDHA/blob/master/vignettes/Example.Rmd)
 
 # How to use the package for new data 
