@@ -4,7 +4,9 @@ The scDHA software package can perform cell segregation through unsupervised lea
 # How to install:
 - The package can be installed from this repository.
 - Install devtools: `utils::install.packages('devtools')`
-- Install the package using: `devtools::install_github('duct317/scDHA')`
+- Install the package using: `devtools::install_github('duct317/scDHA')`  
+  Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
+- If necessary, install miniconda: `reticulate::install_miniconda(force = T)`
 - Install tensorflow and keras in python using: `keras::install_keras(tensorflow = "1.10.0")`
 - For more information about installation of keras, please visit https://keras.rstudio.com/
 
@@ -17,9 +19,10 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - The clustering result can be found here: `cluster <- result$cluster`
 - Calculating adjusted Rand Index using mclust package: `mclust::adjustedRandIndex(cluster,label)`
 - A detailed tutorial on how to use scDHA package is available at http://scdha.tinnguyen-lab.com/
+  Or, a vignette in R Notebook format is available [here](https://github.com/duct317/scDHA/blob/master/vignettes/Example.Rmd)
 
 # How to use the package for new data 
-To use our package for new data, the package includes these functions:
+To use our package for new data, the package includes these functions:  
 - scDHA: main function, doing dimension reuction and clustering. The input is a matrix with rows as samples and columns as genes.
 - scDHA.w: plot the normalized weight variances to select suitable cutoff for gene filtering (optional).
 - scDHA.vis: visualization. The input is demension reduction output.

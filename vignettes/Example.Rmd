@@ -24,14 +24,15 @@ In one joint framework, the scDHA software package conducts cell segregation thr
 
 # Installation
 ### Install scDHA package and other requirements
+scDHA can be installed fron GitHub using below instruction. scDHA depends on the `keras` package in python to build and train the autoencoders. You need to have your python environment set up before installing `keras`. You can install `miniconda` to quickly set it up using below code.
 ```{r, eval=FALSE}
 #Install devtools: 
 utils::install.packages('devtools')
 
 #Install the package from GitHub:
 devtools::install_github('duct317/scDHA')
-#Or CRAN:
-utils::install.packages('scDHA')
+#With manual and vignette: 
+devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)
 
 #Install tensorflow and keras in python using (install miniconda if necessary): 
 if(is(try(reticulate::conda_version()), "try-error")) reticulate::install_miniconda(force = T)
@@ -65,7 +66,7 @@ data <- log2(data + 1)
 
 ### Clustering
 ```{r, eval=FALSE}
-#Generate clustering result
+#Generate clustering result, the input matrix has rows as samples and columns as genes
 result <- scDHA(data, seed = 1)
 
 #The clustering result can be found here 
@@ -78,7 +79,7 @@ print(paste0("ARI = ", ari))
 
 ### Visualization
 ```{r, eval=FALSE}
-#Generate 2D representation
+#Generate 2D representation, the input is the output from scDHA function
 result <- scDHA.vis(result, seed = 1)
 
 #Plot the representation of the dataset, different colors represent different cell types
@@ -90,7 +91,7 @@ plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
 #Cell stage order in Goolam dataset
 cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
 
-#Generate pseudo-time for each cell
+#Generate pseudo-time for each cell, the input is the output from scDHA function
 result <- scDHA.pt(result, start.point = 1, seed = 1)
 
 #Calculate R-squared value representing correlation between inferred pseudo-time and cell stage order
@@ -111,7 +112,7 @@ idx <- sample.int(nrow(data), size = round(nrow(data)*0.75))
 train.x <- data[idx, ]; train.y <- label[idx]
 test.x <- data[-idx, ]; test.y <- label[-idx]
 
-#Predict the labels of cells in testing set
+#Predict the labels of cells in testing set, the input matrices have rows as samples and columns as genes
 prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, seed = 1)
 
 #Calculate accuracy of the predictions
