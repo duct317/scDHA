@@ -32,4 +32,4 @@ To use our package for new data, the package includes these functions:
 - More detail about parameters for each function could be found in the manual.
 
 # Citation:
-Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2019). Fast and precise single-cell data analysis using hierarchical autoencoder. <i>bioRxiv</i>, 799817. doi: 10.1101/799817 ([link](https://www.biorxiv.org/content/10.1101/799817v2)) 
+Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2021). Fast and precise single-cell data analysis using a hierarchical autoencoder. <i>Nature Communications</i>, <b>12</b>, 1029. doi: 10.1038/s41467-021-21312-2 ([link](https://www.nature.com/articles/s41467-021-21312-2)) 
