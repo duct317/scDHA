@@ -1,7 +1,7 @@
 Package: scDHA
 Type: Package
 Title: Single-cell Decomposition using Hierarchical Autoencoder 
-Version: 1.0.0
+Version: 1.1.0
 Authors@R: c(
     person("Duc", "Tran", , "duct@nevada.unr.edu", role = c("aut", "cre")),
     person("Hung", "Nguyen", role = c("aut")),
@@ -18,7 +18,7 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.4)
 Imports: matrixStats, foreach, keras, tensorflow, doParallel, igraph, Matrix, 
-    cluster, clusterCrit, Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy, methods
+    cluster, clusterCrit, Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
 RoxygenNote: 7.1.0
 Suggests: knitr, SingleCellExperiment, mclust

@@ -1,4 +1,4 @@
-#' @import keras tensorflow doParallel
+#' @import keras tensorflow doParallel torch
 #' @importFrom parallel makeCluster clusterEvalQ stopCluster
 #' @importFrom matrixStats colSums2 rowSds rowMeans2 rowMaxs rowMins colSds colMins
 #' @importFrom stats predict
@@ -24,7 +24,8 @@
 #' @export
 
 
-scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+  RhpcBLASctl::blas_set_num_threads(min(2, ncores))
   K = 3
   if(sparse) {
     if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
@@ -50,7 +51,7 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 15L, gen
       data <- log2(data + 1)
     }
     data <- normalize_data_dense(data)
-  } 
+  }
   gc()
   if(nrow(data) >= 50000)
   {
@@ -71,38 +72,41 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, wdec
   })
   or <- foreach(i = seq(3)) %dopar%
     {
-      if (is.null(seed))
+      if (!is.null(seed))
       {
-        config <- list()
-        config$intra_op_parallelism_threads <- ncores.ind
-        config$inter_op_parallelism_threads <- ncores.ind
-        session_conf <- do.call(tf$ConfigProto, config)
-        sess <- tf$Session(graph = tf$get_default_graph(), config = session_conf)
-        k_set_session(session = sess)
-      } else {
         set.seed((seed+i))
-        use_session_with_seed((seed+i))
-      }
+        torch_manual_seed((seed+i))
+      } 
       
       data.tmp <- data.list[[i]]
-      batch_size <-round(nrow(data.tmp)/50)
+      batch_size <- max(round(nrow(data.tmp)/50),2)
       
-      x <- layer_input(shape = c(original_dim))
-      h <- layer_dense(x, 50, kernel_constraint = constraint_nonneg())
-      x_decoded_mean <- layer_dense(h, original_dim)
-      vae <- keras_model(x, x_decoded_mean)
-      vae %>% compile(optimizer =   tf$contrib$opt$AdamWOptimizer(wdecay,1e-3), loss = 'mse')
+      torch::torch_set_num_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
+      torch::torch_set_num_interop_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
+      RhpcBLASctl::blas_set_num_threads(1)
       
+      data_train <- scDHA_dataset(data.tmp)
+      dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
       
-      his <- vae %>% fit(
-        data.tmp, data.tmp,
-        shuffle = TRUE,
-        epochs = 10,
-        batch_size = batch_size,
-        verbose = 0
-      )
+      model <- scDHA_AE(original_dim, 32)
       
-      W <- get_weights(get_layer(vae, index = 2))[[1]]
+      optimizer <- optim_adamw(model$parameters, lr = 1e-3, weight_decay = wdecay, eps = 1e-7)
+      
+      for (epoch in 1:10) {
+        optimizer$zero_grad()
+        for (b in enumerate(dl)) {
+          output <- model(b[[1]])
+          loss <- torch::nnf_mse_loss(output, b[[1]])
+          loss$backward()
+          optimizer$step()
+          optimizer$zero_grad()
+          with_no_grad({
+            model$fc1$weight$copy_(model$fc1$weight$data()$clamp(min=0))
+          })
+        }
+      }
+
+      W <- t(as.matrix(model$fc1$weight))
       Wsd <- rowSds(W)
       Wsd[is.na(Wsd)] <- 0
       Wsd <- (Wsd-min(Wsd))/(max(Wsd)-min(Wsd))
@@ -123,18 +127,11 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     library(scDHA)
   })
   latent <- foreach(i = 1:K) %dopar% {
-    if (is.null(seed))
+    if (!is.null(seed))
     {
-      config <- list()
-      config$intra_op_parallelism_threads <- ncores.ind
-      config$inter_op_parallelism_threads <- ncores.ind
-      session_conf <- do.call(tf$ConfigProto, config)
-      sess <- tf$Session(graph = tf$get_default_graph(), config = session_conf)
-      k_set_session(session = sess)
-    } else {
       set.seed((seed+i))
-      use_session_with_seed((seed+i))
-    }
+      torch_manual_seed((seed+i))
+    } 
     
     if(nrow(or.da) >= 50000)
     {
@@ -146,111 +143,81 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
       batch_size <- round(nrow(da)/50)
     }
     
-    x <- layer_input(shape = c(original_dim_reduce))
+    torch::torch_set_num_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
+    torch::torch_set_num_interop_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
+    RhpcBLASctl::blas_set_num_threads(1)
     
-    sampling <- function(arg){
-      z_mean <- arg[, 1:(latent_dim)]
-      z_var <- arg[, (latent_dim + 1):(2 * latent_dim)]
-      
-      epsilon <- k_random_normal(
-        shape = c(k_shape(z_mean)[[1]]),
-        mean=0.,
-        stddev=epsilon_std
-      )
-      
-      z_mean + k_sqrt(z_var)*epsilon
-    }
+    data_train <- scDHA_dataset(da)
+    dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
     
-    if(nrow(da) > 500)
-    {
-      h <- layer_dense(x , intermediate_dim, activation = NULL)
-      h <- layer_batch_normalization(h, batch_size = 100)
-    } else {
-      h <- layer_dense(x , intermediate_dim, activation = "selu")
-    }
-    
-    z_mean <- layer_dense(h, latent_dim)
-    
-    z_var <- layer_dense(h, latent_dim, activation = "softmax")
-    
-    z <- list()
-    h_decoded <- list()
-    x_decoded_mean <- list()
-    for (e in 1:2) {
-      z[[e]] <- layer_concatenate(list(z_mean, z_var)) %>%
-        layer_lambda(sampling)
-      h_decoded[[e]] <- layer_dense(z[[e]], units = intermediate_dim, activation = "selu")
-      x_decoded_mean[[e]] <- layer_dense(h_decoded[[e]], original_dim_reduce)
-    }
-    
-    da.list <- list()
-    for (e in 1:2) {
-      da.list[[e]] <- da
-    }
-    
-    # end-to-end autoencoder
-    vae <- keras_model(x, x_decoded_mean)
-    
-    # encoder, from inputs to latent space
-    encoder <- keras_model(x, z_mean)
+    model <- scDHA_VAE(original_dim_reduce, intermediate_dim, latent_dim, epsilon_std, (nrow(da) > 500))
     
     #WU
-    vae %>% compile(optimizer =   tf$contrib$opt$AdamWOptimizer(wdecay,lr[1]), loss = 'mae')
+    optimizer <- optim_adamw(model$parameters, lr = lr[1], weight_decay = wdecay, eps = 1e-7)
+    for (epoch in 1:epochs[1]) {
+      optimizer$zero_grad()
+      for (b in enumerate(dl)) {
+        output <- model(b[[1]])
+        loss <- torch_mean(torch_abs(output[[3]] - b[[1]])) + torch_mean(torch_abs(output[[4]] - b[[1]]))
+        loss$backward()
+        optimizer$step()
+        optimizer$zero_grad()
+      }
+    }
     
-    his <- vae %>% fit(
-      da, da.list,
-      shuffle = TRUE,
-      epochs = epochs[1],
-      batch_size = batch_size,
-      verbose = 0
-    )
-    
-    vae_loss <- function(x, x_pred){
-      xent_loss <- loss_mean_squared_logarithmic_error(x, x_pred) 
-      kl_loss <- -0.5*k_mean(1 + k_log(z_var) - k_square(z_mean) - z_var, axis = -1L)
+    vae_loss <- function(x, x_pred, z_mu, z_var, beta){
+      xent_loss <- torch_mean(torch_square(x - x_pred), dim = 2)
+      kl_loss <- -0.5*torch_mean(1 + torch_log(z_var) - torch_square(z_mu) - z_var, dim = 2)
       loss <- xent_loss*beta + kl_loss
-      loss
+      torch_mean(loss)
     }
     
     #Train
-    vae %>% compile(optimizer = tf$contrib$opt$AdamWOptimizer(wdecay,lr[2]), loss = vae_loss)
-    
-    his <- vae %>% fit(
-      da, da.list,
-      shuffle = TRUE,
-      epochs = epochs[2],
-      batch_size = batch_size,
-      verbose = 0
-    )
-    
+    optimizer <- optim_adamw(model$parameters, lr = lr[2], weight_decay = wdecay, eps = 1e-7)
+    for (epoch in 1:epochs[2]) {
+      optimizer$zero_grad()
+      for (b in enumerate(dl)) {
+        output <- model(b[[1]])
+        loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
+        loss$backward()
+        optimizer$step()
+        optimizer$zero_grad()
+      }
+    }
+
     predict_on_sparse <- function(data, model, latent_dim)
     {
       folds <- round(seq(1, nrow(data), length.out = round(nrow(data)/10000)))
       tmp <- matrix(ncol = latent_dim, nrow = nrow(data))
       
       for (i in 2:length(folds)) {
-        tmp[folds[i-1]:folds[i], ] <- model %>% predict(as.matrix(data[folds[i-1]:folds[i], ]))
+        with_no_grad({
+          tmp[folds[i-1]:folds[i], ] <- as.matrix(model$encode_mu(torch_tensor(as.matrix(data[folds[i-1]:folds[i], ]))))
+        })
       }
-      
       tmp
     }
     
     latent.tmp <- list()
     for (ite in 1:ens) {
-      his <- vae %>% fit(
-        da, da.list,
-        shuffle = TRUE,
-        epochs = epochs[2]+ite,
-        batch_size = batch_size,
-        verbose = 0,
-        initial_epoch = (epochs[2]+ite-1)
-      )
+      model$train()
+      optimizer$zero_grad()
+      for (b in enumerate(dl)) {
+        output <- model(b[[1]])
+        loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
+        loss$backward()
+        optimizer$step()
+        optimizer$zero_grad()
+      }
       
+      model$eval()
       if(nrow(or.da) > 20000)
       {
-        tmp <- predict_on_sparse(or.da, encoder, latent_dim)
+        tmp <- predict_on_sparse(or.da, model, latent_dim)
       } else {
-        tmp <- encoder %>% predict(as.matrix(or.da))
+        with_no_grad({
+          tmp <- as.matrix(model$encode_mu(torch_tensor(as.matrix(or.da))))
+        })
       }
       latent.tmp[[length(latent.tmp)+1]] <- tmp
     }
@@ -260,20 +227,20 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
   latent
 }
 
-scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
-  wdecay <- 1e-6
+  wdecay <- c(1e-6, 1e-3)
   batch_size <- max(round(nrow(data)/50),2)
   epochs <- c(10,20)
   
-  lr <- c(5e-4, 5e-4, 5e-4)
+  lr <- rep(5e-4, 2) 
   gen_fil <- (gen_fil & (ncol(data) > n))
   n <- ifelse(gen_fil, min(n, ncol(data)), ncol(data))
   epsilon_std <- 0.25
-  beta <- 250
+  beta <- 100
   ens  <-  3
   
   intermediate_dim = 64
@@ -293,7 +260,7 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, ge
       data.tmp
     })
     
-    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay, seed = seed)
+    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay[1], seed = seed)
     
     keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
     
@@ -308,7 +275,7 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, ge
   
   #Latent generation
   latent <- latent.generating(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, sample.prob, seed)
   
   gc(reset = TRUE)
   
@@ -326,6 +293,7 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, ge
       library(scDHA)
     })
     result$all <- foreach(x = latent) %dopar% {
+      RhpcBLASctl::blas_set_num_threads(1)
       set.seed(seed)
       if (nrow(x) > 5000)
       {
@@ -346,7 +314,6 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, ge
     list( cluster = final,
           latent = g.en,
           all.latent = latent,
-          keep = colnames(or.da),
           all.res = result$all)
   } else {
     list( all.latent = latent,
@@ -355,20 +322,20 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, ge
   
 }
 
-scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
-  wdecay <- 1e-4
+  wdecay <- c(1e-4, 1e-2)
   batch_size <- max(round(nrow(data)/50),2)
   epochs <- c(10,20)
   
-  lr <- rep(1e-3, 3) 
+  lr <- rep(1e-3, 2) 
   gen_fil <- (gen_fil & (ncol(data) > n))
   n <- ifelse(gen_fil, min(n, ncol(data)), ncol(data))
   epsilon_std <- 0.25
-  beta <- 250
+  beta <- 50
   ens  <-  3
   
   intermediate_dim = 64
@@ -383,7 +350,7 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
       data.tmp
     })
     
-    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay, seed = seed)
+    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay[1], seed = seed)
     
     keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
     
@@ -400,7 +367,7 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
   
   #Latent generation
   latent <- latent.generating(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, sample.prob, seed)
   
   gc(reset = TRUE)
   
@@ -420,6 +387,7 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
     
     idx <- sample.int(nrow(latent[[1]] ), size = 5000)
     result$all <- foreach(x = latent) %dopar% {
+      RhpcBLASctl::blas_set_num_threads(1)
       set.seed(seed)
       cluster <- clus.big(x, k = k, n = 5000, nmax = 15)
       
@@ -438,7 +406,6 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
     list( cluster = final,
           latent = g.en,
           all.latent = latent,
-          keep = colnames(or.da),
           all.res = result$all)
   } else {
     list( all.latent = latent,
@@ -468,7 +435,8 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 15L, gen_
 #' plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
 #' }
 #' @export
-scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
+scDHA.w <- function(data = data, sparse = F, ncores = 10L, seed = NULL) {
+  RhpcBLASctl::blas_set_num_threads(min(2, ncores))
   K = 3
   sample.prob = NULL
   do.clus = T
@@ -515,25 +483,14 @@ scDHA.w <- function(data = data, sparse = F, ncores = 15L, seed = NULL) {
   w
 }
 
-scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
   wdecay <- 1e-6
   batch_size <- max(round(nrow(data)/50),2)
-  epochs <- c(10,20)
-  
-  lr <- c(5e-4, 5e-4, 5e-4)
-  gen_fil <- (gen_fil & (ncol(data) > 5000))
-  n <- ifelse(gen_fil, min(5000, ncol(data)), ncol(data))
-  epsilon_std <- 0.25
-  beta <- 250
-  ens  <-  3
-  
-  intermediate_dim = 64
-  latent_dim = 15
-  
+
   #Feature selection
 
   data.list <- lapply(seq(3), function(i) {
@@ -554,25 +511,14 @@ scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = 
   
 }
 
-scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
   wdecay <- 1e-4
   batch_size <- max(round(nrow(data)/50),2)
-  epochs <- c(10,20)
-  
-  lr <- rep(1e-3, 3) #c(5e-4, 5e-4, 5e-4)
-  gen_fil <- (gen_fil & (ncol(data) > 5000))
-  n <- ifelse(gen_fil, min(5000, ncol(data)), ncol(data))
-  epsilon_std <- 0.25
-  beta <- 250
-  ens  <-  3
-  
-  intermediate_dim = 64
-  latent_dim = 25
-  
+
   #Feature selection
 
   data.list <- lapply(1:3, function(i) {
@@ -595,4 +541,9 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 15L, gen_fil = T,
 "Goolam"
 
 
-
+.onLoad <- function(libname, pkgname) {
+  if(!torch::torch_is_installed())
+  {
+    library(torch)
+  }
+}

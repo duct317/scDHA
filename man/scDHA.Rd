@@ -9,7 +9,7 @@ scDHA(
   k = NULL,
   sparse = F,
   n = 5000,
-  ncores = 15L,
+  ncores = 10L,
   gen_fil = T,
   do.clus = T,
   sample.prob = NULL,

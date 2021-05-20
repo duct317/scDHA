@@ -4,7 +4,7 @@
 \alias{scDHA.w}
 \title{scDHA.w}
 \usage{
-scDHA.w(data = data, sparse = F, ncores = 15L, seed = NULL)
+scDHA.w(data = data, sparse = F, ncores = 10L, seed = NULL)
 }
 \arguments{
 \item{data}{Gene expression matrix, with rows represent samples and columns represent genes.}
