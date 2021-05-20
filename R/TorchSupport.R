@@ -283,7 +283,7 @@ scDHA_model_vis <- nn_module(
     x_ <- z %>% self$x_() %>% nnf_softmax(dim = 2)
     
     list(z1, x_)
-  }
+  },
   
   encode_latent = function(x) {
     x <- x %>% self$h1() %>% nnf_elu() %>% nnf_dropout()
