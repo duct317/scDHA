@@ -12,7 +12,7 @@ Authors@R: c(
     )
 Maintainer: Duc Tran <duct@nevada.unr.edu>
 Description: Single-cell Decomposition using Hierarchical Autoencoder (scDHA) is a fast and accurate pipeline for single-cell analyses. 
-    The scDHA software package can perform clustering, dimension reduction and visualization, classification, and time-trajectory inference on single-cell data.
+    The scDHA software package can perform clustering, dimension reduction and visualization, classification, and time-trajectory inference on single-cell data (Tran et.al. (2021) <DOI: 10.1038/s41467-021-21312-2>).
 License: LGPL
 Encoding: UTF-8
 LazyData: true
