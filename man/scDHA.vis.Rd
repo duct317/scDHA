@@ -4,12 +4,14 @@
 \alias{scDHA.vis}
 \title{scDHA visulization}
 \usage{
-scDHA.vis(sc = sc, ncores = 15L, seed = NULL)
+scDHA.vis(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
 }
 \arguments{
 \item{sc}{Embedding object produced by the \code{scDHA} function.}
 
-\item{ncores}{number of processor cores to use.}
+\item{method}{Visualization method to use. It can be "UMAP" or "scDHA". The default setting is "UMAP".}
+
+\item{ncores}{Number of processor cores to use.}
 
 \item{seed}{Seed for reproducibility.}
 }

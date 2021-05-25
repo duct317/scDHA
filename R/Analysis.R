@@ -2,7 +2,8 @@
 #' @title scDHA visulization
 #' @description  Generating 2D embeded data for visulation.
 #' @param sc Embedding object produced by the \code{scDHA} function.
-#' @param ncores number of processor cores to use.
+#' @param method Visualization method to use. It can be "UMAP" or "scDHA". The default setting is "UMAP".
+#' @param ncores Number of processor cores to use.
 #' @param seed Seed for reproducibility.
 #' @return a list with the following keys:
 #' \itemize{
@@ -10,21 +11,25 @@
 #' }
 #' @export
 
+scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
+{
+  if(method == "UMAP")
+  {
+    set.seed(seed)
+    data <- sc$latent
+    pred <- uwot::umap(data, n_threads = ncores)
+    sc$pred <- pred
+    return(sc)
+  } else if (method == "scDHA") {
+    return(scDHA.vis.old(sc = sc, ncores = ncores, seed = seed))
+  } else {
+    message("'method' should be one of 'UMAP', or 'scDHA'")
+  }
+}
 
-scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
+scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
   set.seed(seed)
 
-  cal.dis <- function(arg) {
-    a <- arg
-    a2 <- k_square(a)
-    a2sum <- k_sum(a2, axis = -1)
-    dis <- k_expand_dims(a2sum) + a2sum
-    ab <- k_dot(a, k_transpose(a))
-    final.dis <- dis - 2 * ab
-    final.dis <- k_sqrt(final.dis+1e-6)
-    final.dis
-  }
-  
   tmp.data <- sc$latent
   
   if(nrow(tmp.data > 50000)) {
@@ -66,7 +71,7 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
     sim.mat <- 1 - cor(t(data))
     
     sim.mat <- log(sim.mat + 1)
-
+    
     tmp.cluster <- (kmeans(data, 15, nstart = 100, iter.max = 1e6))$cluster
     y1 <- to_categorical(as.numeric(tmp.cluster) - 1)
     
@@ -84,49 +89,35 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
   })
   pred <- foreach(i = 1:1) %dopar%
     {
-      if (is.null(seed))
+      if (!is.null(seed))
       {
-        config <- list()
-        config$intra_op_parallelism_threads <- ncores
-        config$inter_op_parallelism_threads <- ncores
-        session_conf <- do.call(tf$ConfigProto, config)
-        sess <- tf$Session(graph = tf$get_default_graph(), config = session_conf)
-        k_set_session(session = sess)
-      } else {
-        set.seed((seed))
-        use_session_with_seed((seed))
-      }
+        set.seed((seed+i))
+        torch_manual_seed((seed+i))
+      } 
       
-      eps <- 0.1
+      torch::torch_set_num_threads(ifelse(nrow(data.en) < 1000, 1, 2))
+      torch::torch_set_num_interop_threads(ifelse(nrow(data.en) < 1000, 1, 2))
+      RhpcBLASctl::blas_set_num_threads(1)
 
-      x <- layer_input(ncol(data.en))
-      x1 <- layer_gaussian_noise(x, eps)
-      h1 <- layer_dense(x1, 1024, activation = "elu") %>% layer_dropout(0.5)
-      h2 <- layer_dense(h1, 32, activation = "sigmoid")
-      z <- layer_dense(h2, 2) %>% layer_batch_normalization(center = F, momentum = 0.9)
-      z1 <- layer_lambda(z, cal.dis, name = "z1")
-      
-      x_ <- layer_dense(z, ncol(data.list[[1]]$y1), activation = "softmax", name = "x_")
-      
-      model <- keras_model(x, list(z1, x_))
-      model_out <- keras_model(x, z)
-      
+      model <- scDHA_model_vis(ncol(data.en), ncol(data.list[[1]]$y1))
+
       model_loss <- function(x_or, x_pred) {
-        x_pred <- k_log(x_pred + 1)
-        x_pred <- (x_pred - k_mean(x_pred, axis = 1))/k_std(x_pred, axis = 1)
-        x_pred <- k_transpose(x_pred)
-        x_pred <- x_pred*k_abs(x_pred)/2
-        xent_loss <- k_exp( -x_pred )
-        xent_loss <- xent_loss*k_cast(k_greater(x_or, 0), k_floatx())
-        tmp <- k_sum(xent_loss, axis = -1)
-        xent_loss <- k_transpose( k_transpose(xent_loss)/tmp )
-        loss <- loss_kullback_leibler_divergence(x_or, xent_loss)
+        x_pred <- torch_log(x_pred + 1)
+        x_pred <- (x_pred - torch_mean(x_pred, dim = 1, keepdim = T))/torch_std(x_pred, dim = 1, keepdim = T, unbiased = F)
+        x_pred <- x_pred$t()
+        x_pred <- x_pred*torch_abs(x_pred)/2
+        xent_loss <- torch_exp( -x_pred )
+        xent_loss <- xent_loss*torch_greater(x_or, 0)
+        tmp <- torch_sum(xent_loss, dim = 2)
+        xent_loss <- ( xent_loss$t()/tmp )$t()
+        
+        x_or <- torch_clamp(x_or, 1e-7, 1)
+        xent_loss <- torch_clamp(xent_loss, 1e-7, 1)
+        loss <- torch_sum(x_or*torch_log(x_or/xent_loss), dim = 2)
         loss
       }
       
-      
-      model %>% compile(optimizer = optimizer_adam(5e-3, epsilon = 1e-4), loss = list(model_loss, loss_categorical_crossentropy), loss_weight = c(10, 1)) 
-      
+      optimizer <- optim_adam(model$parameters, 5e-3, eps = 1e-4)
       max.ite <- ceiling(50/(length(data.list)**(2/3)) )
       
       for (ite in 1:max.ite) {
@@ -138,25 +129,35 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
           idxs <- 1:nrow(data)
           idxs <- createFolds(idxs, min(10, ceiling(nrow(data)/ 50)))
           
+          optimizer$zero_grad()
           for (idx in idxs) {
             
             tmp.sim.mat <- t(scale(t(sim.mat[idx, idx])))
             sim.mat.dis <- tmp.sim.mat/2*abs(tmp.sim.mat)
             sim.mat.dis.exp <- exp(-sim.mat.dis)
             diag(sim.mat.dis.exp) <- 0
-            his <- model %>% train_on_batch(data[idx, ], list(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp), y1[idx, ]))
             
+            output <- model(torch_tensor(data[idx, ]))
+            loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp)), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
+            print(loss)
+            if(as.numeric(torch_isnan(loss)) == 0)
+            {
+              loss$backward()
+              optimizer$step()
+            }
+            optimizer$zero_grad()
           }
-          
         }
-        
       }
       
       data <- data.en
       
-      pred <- model_out %>% predict(data)
+      model$eval()
+      with_no_grad({
+        pred <- as.matrix(model$encode_latent(torch_tensor(data))) 
+      })
       pred
-
+      
     }
   parallel::stopCluster(cl)
   
@@ -164,7 +165,7 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
   pred <- pred[[1]]
   
   
-
+  
   resol <- 20
   x.seq <- seq(min(pred[, 1]), max(pred[, 1]) + 0.01, length.out = resol)
   y.seq <- seq(min(pred[, 2]), max(pred[, 2]) + 0.01, length.out = resol)
@@ -228,7 +229,6 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
   sc
 }
 
-
 #' @importFrom igraph graph_from_adjacency_matrix mst distances
 #' @importFrom stats quantile
 #' @title scDHA pseudo time inference
@@ -242,14 +242,28 @@ scDHA.vis <- function(sc = sc, ncores = 15L, seed = NULL) {
 #' \item pt - Pseudo-time values for each sample.
 #' }
 #' @export
-scDHA.pt <- function(sc = sc, start.point = 1, ncores = 15L, seed = NULL) {
+scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
+  RhpcBLASctl::blas_set_num_threads(min(ncores, 4))
   lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.75)
   tmp.list <- lapply(lat.idx, function(i) sc$all.latent[[i]])
   
+  if(nrow(tmp.list[[1]]) <= 5000)
+  {
+    set.seed(seed)
+    all.res <- sc$all.res
+    tmp.list.or <- tmp.list
+  } else {
+    set.seed(seed)
+    idx.all <- sample.int(nrow(tmp.list[[1]]), 4900)
+    all.res <- sc$all.res
+    tmp.list.or <- tmp.list
+    
+    tmp.list <- lapply(tmp.list, function(x) x[idx.all,])
+    all.res <- lapply(all.res, function(x) x[idx.all])
+  }
+  
   t.final <- matrix(ncol = length(tmp.list), nrow = nrow(tmp.list[[1]]))
   counter <- 1
-  
-  set.seed(seed)
   
   for (x in tmp.list) {
     data <- x
@@ -261,13 +275,13 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 15L, seed = NULL) {
     dis <- distances(g)
     
     dis[is.infinite(dis)] <- -1
-
+    
     result <- start.point
     
     t <- dis[result,]
     
-    for (cl in unique(sc$all.res[[lat.idx[counter]]])) {
-      idx <- which(sc$all.res[[lat.idx[counter]]] == cl)
+    for (cl in unique(all.res[[lat.idx[counter]]])) {
+      idx <- which(all.res[[lat.idx[counter]]] == cl)
       tmp <- t[idx]
       tmp.max <- max(tmp)
       tmp.min <- min(tmp)
@@ -280,6 +294,22 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 15L, seed = NULL) {
   }
   
   t.final <- rowMeans2(t.final)
+  
+  if(nrow(tmp.list.or[[1]]) > 5000)
+  {
+    tmp <- rep(0, nrow(tmp.list.or[[1]]))
+    tmp[idx.all] <- t.final
+    
+    latent <- sc$latent
+    latent.t.final <- latent[idx.all, ]
+    
+    for (i in seq(nrow(tmp.list.or[[1]]))[-idx.all]) {
+      d <- 1 - cor(latent[i, ], t(latent.t.final))
+      tmp[i] <- mean(t.final[order(d)[1:3]])
+    }
+    t.final <- tmp
+  }
+  
   sc$pt <- t.final
   sc
 }
@@ -295,7 +325,7 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 15L, seed = NULL) {
 #' @param seed Seed for reproducibility.
 #' @return A vector contain classified labels for new data.
 #' @export
-scDHA.class <- function(train = train, train.label = train.label, test = test, ncores = 15L, seed = NULL) {
+scDHA.class <- function(train = train, train.label = train.label, test = test, ncores = 10L, seed = NULL) {
   data <- rbind(train, test)
   prob <- c(rep(1/nrow(train), nrow(train)), rep(1/nrow(test), nrow(test)))
   sc <- scDHA(data, ncores = ncores, do.clus = F, sample.prob = prob, seed = seed)

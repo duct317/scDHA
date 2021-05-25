@@ -7,6 +7,7 @@
 scDHA(
   data = data,
   k = NULL,
+  method = "scDHA",
   sparse = F,
   n = 5000,
   ncores = 10L,
@@ -20,6 +21,8 @@ scDHA(
 \item{data}{Gene expression matrix, with rows represent samples and columns represent genes.}
 
 \item{k}{Number of clusters, leave as default for auto detection. Has no effect when \code{do.clus = False}.}
+
+\item{method}{Method used for clustering. It can be "scDHA" or "louvain". The default setting is "scDHA".}
 
 \item{sparse}{Boolen variable indicating whether data is a sparse matrix. The input must be a non negative sparse matrix.}
 

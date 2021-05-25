@@ -28,7 +28,7 @@ phenograph <- function(data, k=30){
   t3 <- system.time(g <- graph.data.frame(relations, directed=FALSE))
 
   cat("DONE ~",t3[3],"s\n", " Run louvain clustering on the graph ...")
-  t4 <- system.time(community <- igraph::cluster_louvain(g)) #cluster_louvain(g))
+  t4 <- system.time(community <- igraph::cluster_louvain(g))
   cat("DONE ~",t4[3],"s\n")
   
   message("Run Rphenograph DONE, totally takes ", sum(c(t1[3],t2[3],t3[3],t4[3])), "s.")

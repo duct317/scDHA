@@ -17,7 +17,7 @@ License: LGPL
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.4)
-Imports: matrixStats, foreach, keras, tensorflow, doParallel, igraph, Matrix, 
+Imports: matrixStats, foreach, doParallel, igraph, Matrix, uwot,
     cluster, clusterCrit, Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
 RoxygenNote: 7.1.0

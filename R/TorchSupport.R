@@ -256,7 +256,7 @@ scDHA_model_vis <- nn_module(
     self$h2 <- nn_linear(1024, 32)
     
     self$z <- nn_linear(32, 2)
-    self$bn <- nn_batch_norm1d(32, momentum = 0.1, eps = 1e-3)
+    self$bn <- nn_batch_norm1d(2, momentum = 0.1, eps = 1e-3)
     
     self$x_ <- nn_linear(2, out_dim)
     

@@ -24,7 +24,7 @@ In one joint framework, the scDHA software package conducts cell segregation thr
 
 # Installation
 ### Install scDHA package and other requirements
-scDHA can be installed fron GitHub using below instruction. scDHA depends on the `keras` package in python to build and train the autoencoders. You need to have your python environment set up before installing `keras`. You can install `miniconda` to quickly set it up using below code.
+scDHA can be installed fron GitHub using below instruction. scDHA depends on the `torch` package to build and train the autoencoders. The first time `scDHA` packaged is loaded, `torch` package will install the necessary C++ `libtorch`, which is used for neural network computation. 
 ```{r, eval=FALSE}
 #Install devtools: 
 utils::install.packages('devtools')
@@ -34,11 +34,8 @@ devtools::install_github('duct317/scDHA')
 #With manual and vignette: 
 devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)
 
-#Install tensorflow and keras in python using (install miniconda if necessary): 
-if(is(try(reticulate::conda_version()), "try-error")) reticulate::install_miniconda(force = T)
-keras::install_keras(method = "conda", tensorflow = "1.10.0")
-
-#For more information about installation of keras, please visit https://keras.rstudio.com/
+#The first time the package is loaded, torch package will install C++ libtorch 
+library(scDHA)
 ```
 
 ### Install other necessary packages

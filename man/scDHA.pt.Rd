@@ -4,7 +4,7 @@
 \alias{scDHA.pt}
 \title{scDHA pseudo time inference}
 \usage{
-scDHA.pt(sc = sc, start.point = 1, ncores = 15L, seed = NULL)
+scDHA.pt(sc = sc, start.point = 1, ncores = 10L, seed = NULL)
 }
 \arguments{
 \item{sc}{Embedding object, produced by \code{scDHA} function.}

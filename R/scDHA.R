@@ -1,4 +1,4 @@
-#' @import keras tensorflow doParallel torch
+#' @import doParallel torch
 #' @importFrom parallel makeCluster clusterEvalQ stopCluster
 #' @importFrom matrixStats colSums2 rowSds rowMeans2 rowMaxs rowMins colSds colMins
 #' @importFrom stats predict
@@ -9,6 +9,7 @@
 #' @description The main function to perform dimension deduction and clustering.
 #' @param data Gene expression matrix, with rows represent samples and columns represent genes.
 #' @param k Number of clusters, leave as default for auto detection. Has no effect when \code{do.clus = False}.
+#' @param method Method used for clustering. It can be "scDHA" or "louvain". The default setting is "scDHA".
 #' @param sparse Boolen variable indicating whether data is a sparse matrix. The input must be a non negative sparse matrix.
 #' @param n Number of genes to keep after feature selection step.
 #' @param ncores Number of processor cores to use.
@@ -24,7 +25,7 @@
 #' @export
 
 
-scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = F, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
   K = 3
   if(sparse) {
@@ -55,9 +56,9 @@ scDHA <- function(data = data, k = NULL, sparse = F, n = 5000, ncores = 10L, gen
   gc()
   if(nrow(data) >= 50000)
   {
-    res <- scDHA.big(data = data, k = k, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
+    res <- scDHA.big(data = data, k = k, method = method, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
   } else {
-    res <- scDHA.small(data = data, k = k, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
+    res <- scDHA.small(data = data, k = k, method = method, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
   }
   res
 }
@@ -227,7 +228,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
   latent
 }
 
-scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -311,6 +312,25 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, ge
     g.en <- latent[[which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))]]
     final <- as.numeric(factor(final))
     
+    if(method == "louvain")
+    {
+      idx <- which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))
+      
+      cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
+      doParallel::registerDoParallel(cl, cores = ncores)
+      parallel::clusterEvalQ(cl,{
+        library(scDHA)
+      })
+      result$all <- foreach(x = latent) %dopar% {
+        RhpcBLASctl::blas_set_num_threads(1)
+        set.seed(seed)
+        cluster <- clus.louvain(x)
+        cluster
+      }
+      parallel::stopCluster(cl)
+      final <- as.numeric(factor(result$all[[idx]]))
+    }
+    
     list( cluster = final,
           latent = g.en,
           all.latent = latent,
@@ -322,7 +342,7 @@ scDHA.small <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, ge
   
 }
 
-scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -402,6 +422,25 @@ scDHA.big <- function(data = data, k = NULL, K = 3, n = 5000, ncores = 10L, gen_
     final <- clustercom2(result)
     g.en <- latent[[which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))]]
     final <- as.numeric(factor(final))
+    
+    if(method == "louvain")
+    {
+      idx <- which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))
+      
+      cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
+      doParallel::registerDoParallel(cl, cores = ncores)
+      parallel::clusterEvalQ(cl,{
+        library(scDHA)
+      })
+      result$all <- foreach(x = latent) %dopar% {
+        RhpcBLASctl::blas_set_num_threads(1)
+        set.seed(seed)
+        cluster <- clus.louvain(x)
+        cluster
+      }
+      parallel::stopCluster(cl)
+      final <- as.numeric(factor(result$all[[idx]]))
+    }
 
     list( cluster = final,
           latent = g.en,
@@ -544,6 +583,6 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T,
 .onLoad <- function(libname, pkgname) {
   if(!torch::torch_is_installed())
   {
-    library(torch)
+    torch::install_torch()
   }
 }

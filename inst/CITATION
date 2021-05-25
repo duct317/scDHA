@@ -1,18 +1,18 @@
 citHeader("To cite scDHA in publications use:")
 
 citEntry(entry="article",
-         title = "Fast and precise single-cell data analysis using hierarchical autoencoder",
+         title = "Fast and precise single-cell data analysis using a hierarchical autoencoder",
          author = personList( as.person("Duc Tran"),
                               as.person("Hung Nguyen"),
                               as.person("Bang Tran"),
                               as.person("Carlo La Vecchia"),
                               as.person("Hung N. Luu"),
                               as.person("Tin Nguyen")),
-         year = 2019,
-         journal = "bioRxiv",
-         url = "https://www.biorxiv.org/content/10.1101/799817v2",
+         year = 2021,
+         journal = "Nature Communications",
+         url = "https://www.nature.com/articles/s41467-021-21312-2",
          textVersion =
-         paste("Tran, D., Nguyen, H., Tran, B., La Vecchia, C., Luu, H. N., & Nguyen, T. (2019).",
-               "Fast and precise single-cell data analysis using hierarchical autoencoder.",
-               "bioRxiv, 799817.",
-                "URL: https://www.biorxiv.org/content/10.1101/799817v2" ) )
+         paste("Tran, D., Nguyen, H., Tran, B., La Vecchia, C., Luu, H. N., & Nguyen, T. (2021).",
+               "Fast and precise single-cell data analysis using a hierarchical autoencoder.",
+               "Nature Communications, 12, 1029.",
+                "URL: https://www.nature.com/articles/s41467-021-21312-2" ) )

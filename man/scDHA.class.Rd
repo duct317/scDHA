@@ -8,7 +8,7 @@ scDHA.class(
   train = train,
   train.label = train.label,
   test = test,
-  ncores = 15L,
+  ncores = 10L,
   seed = NULL
 )
 }

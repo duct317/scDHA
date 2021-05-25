@@ -1,14 +1,16 @@
 # scDHA
 The scDHA software package can perform cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference on single-cell RNA sequencing data. 
 
+# News
+- The package is now available on CRAN.
+- The backend changes from Tensorflow to Torch. Torch is called directly from R. Python environment is not required. 
+
 # How to install:
 - The package can be installed from this repository.
 - Install devtools: `utils::install.packages('devtools')`
 - Install the package using: `devtools::install_github('duct317/scDHA')`  
   Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
-- If necessary, install miniconda: `reticulate::install_miniconda(force = T)`
-- Install tensorflow and keras in python using: `keras::install_keras(tensorflow = "1.10.0")`
-- For more information about installation of keras, please visit https://keras.rstudio.com/
+- The first time the package is loaded, it will download and install the necessary `libtorch`: `library(scDHA)`
 
 # To run the Goolam example:
 - Load the package: `library(scDHA)`

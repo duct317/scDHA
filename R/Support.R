@@ -53,6 +53,54 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
   
 }
 
+clus.louvain <- function(data)
+{
+  if(nrow(data) <= 10000)
+  {
+    n <- nrow(data)
+    nn <- 30
+    clus.tmp <- membership(phenograph(data, nn)[[2]])
+    while (length(clus.tmp) != n) {
+      nn <- nn + 10
+      clus.tmp <- membership(phenograph(data, nn)[[2]])
+    }
+    res <- clus.tmp
+  } else {
+    n <- 9900
+    ind <- sample.int(nrow(data), n)
+    ind1 <- (1:nrow(data))[-ind]
+    tmp <- data[ind,]
+    tmp1 <- data[-ind,]
+    
+    nn <- 30
+    clus.tmp <- membership(phenograph(tmp, nn)[[2]])
+    while (length(clus.tmp) != n) {
+      nn <- nn + 10
+      clus.tmp <- membership(phenograph(tmp, nn)[[2]])
+    }
+    
+    nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
+    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+    for (i in 2:length(folds)) {
+      dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
+      for (j in 1:nrow(dis.tmp)) {
+        nn.tmp[folds[i-1] - 1 + j,   ] <- order(dis.tmp[j,])[1:10]
+      }
+    }
+    
+    res <- rep(0, nrow(data))
+    res[ind] <- clus.tmp
+    
+    for (i in 1:nrow(nn.tmp)) {
+      tmp2 <- nn.tmp[i, ]
+      tmp3 <- clus.tmp[tmp2]
+      res[ind1[i]] <- getmode(tmp3)
+    }
+  }
+  
+  res
+}
+
 getmode <- function(v) {
   uniqv <- unique(v)
   uniqv[which.max(tabulate(match(v, uniqv)))]
