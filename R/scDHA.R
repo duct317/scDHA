@@ -580,9 +580,9 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T,
 "Goolam"
 
 
-.onLoad <- function(libname, pkgname) {
+.onAttach <- function(libname, pkgname) {
   if(!torch::torch_is_installed())
   {
-    torch::install_torch()
+  packageStartupMessage("libtorch is not installed. Use `torch::install_torch()` to download and install libtorch")
   }
 }

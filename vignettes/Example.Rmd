@@ -24,7 +24,7 @@ In one joint framework, the scDHA software package conducts cell segregation thr
 
 # Installation
 ### Install scDHA package and other requirements
-scDHA can be installed fron GitHub using below instruction. scDHA depends on the `torch` package to build and train the autoencoders. The first time `scDHA` packaged is loaded, `torch` package will install the necessary C++ `libtorch`, which is used for neural network computation. 
+scDHA can be installed fron GitHub using below instruction. scDHA depends on the `torch` package to build and train the autoencoders. When `scDHA` package is loaded, it will check for the availability of `C++ libtorch`. `torch` package can be used to install `C++ libtorch`, which is necessary for neural network computation. 
 ```{r, eval=FALSE}
 #Install devtools: 
 utils::install.packages('devtools')
@@ -36,8 +36,10 @@ devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)
 #Or from CRAN:
 install.packages("scDHA")
 
-#The first time the package is loaded, torch package will install C++ libtorch 
+#When the package is loaded, it will check for C++ libtorch 
 library(scDHA)
+#libtorch can be installed using:
+torch::install_torch()
 ```
 
 ### Install other necessary packages

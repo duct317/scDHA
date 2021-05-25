@@ -10,11 +10,11 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - Install devtools: `utils::install.packages('devtools')`
 - Install the package using: `devtools::install_github('duct317/scDHA')`  
   Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
-- The first time the package is loaded, it will download and install the necessary `libtorch`: `library(scDHA)`
+- When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`
+  `libtorch` can be installed using: `torch::install_torch()`
 
 # To run the Goolam example:
 - Load the package: `library(scDHA)`
-- Load SingleCellExperiment package to read dataset: `library(SingleCellExperiment)`
 - Load Goolam dataset: `data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)`
 - Log transform the data: `data <- log2(data + 1)`
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
