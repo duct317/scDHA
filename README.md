@@ -10,7 +10,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - Install devtools: `utils::install.packages('devtools')`
 - Install the package using: `devtools::install_github('duct317/scDHA')`  
   Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
-- When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`
+- When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`  
   `libtorch` can be installed using: `torch::install_torch()`
 
 # To run the Goolam example:
