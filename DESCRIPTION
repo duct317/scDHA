@@ -18,10 +18,10 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.4)
 Imports: matrixStats, foreach, doParallel, igraph, Matrix, uwot,
-    cluster, clusterCrit, Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
+    cluster, clusterCrit, Rcpp, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
 RoxygenNote: 7.1.0
-Suggests: knitr, SingleCellExperiment, mclust
+Suggests: knitr, mclust
 NeedsCompilation: yes
 VignetteBuilder: knitr
 SystemRequirements: GNU make

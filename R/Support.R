@@ -267,3 +267,12 @@ getmode1 <- function(v) {
 }
 
 
+to_categorical <- function(cluster) {
+  if(min(cluster) == 0) cluster <- cluster + 1
+  tmp <- matrix(0, ncol = max(cluster), nrow = length(cluster))
+  unique_cl <- seq(max(cluster))
+  for (i in 1:length(unique_cl)) {
+    tmp[which(cluster == unique_cl[i]) , i] <- 1
+  }
+  tmp
+}

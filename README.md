@@ -15,7 +15,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 # To run the Goolam example:
 - Load the package: `library(scDHA)`
 - Load SingleCellExperiment package to read dataset: `library(SingleCellExperiment)`
-- Load Goolam dataset: `data('Goolam'); data <- t(assay(Goolam)); label <- Goolam$cell_type1`
+- Load Goolam dataset: `data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)`
 - Log transform the data: `data <- log2(data + 1)`
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
 - The clustering result can be found here: `cluster <- result$cluster`

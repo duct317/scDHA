@@ -33,6 +33,8 @@ utils::install.packages('devtools')
 devtools::install_github('duct317/scDHA')
 #With manual and vignette: 
 devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)
+#Or from CRAN:
+install.packages("scDHA")
 
 #The first time the package is loaded, torch package will install C++ libtorch 
 library(scDHA)
@@ -40,8 +42,6 @@ library(scDHA)
 
 ### Install other necessary packages
 ```{r, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-if (!requireNamespace("SingleCellExperiment", quietly = TRUE)) BiocManager::install("SingleCellExperiment")
 if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
 ```
 
@@ -49,13 +49,12 @@ if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
 # Analysis on Goolam dataset
 
 ```{r, eval=FALSE}
-library(SingleCellExperiment)
 library(scDHA)
 #Load example data (Goolam dataset)
 data("Goolam")
 
 #Get data matrix and label
-data <- t(assay(Goolam)); label <- as.character(Goolam$cell_type1)
+data <- t(Goolam$data); label <- as.character(Goolam$label)
 
 #Log transform the data 
 data <- log2(data + 1)

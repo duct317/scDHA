@@ -576,7 +576,7 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T,
 
 #' @title Goolam
 #'
-#' @description Goolam dataset in SingleCellExperiment format, include scRNA-seq data and cell type information.
+#' @description Goolam dataset in list format, include scRNA-seq data and cell type information.
 "Goolam"
 
 
