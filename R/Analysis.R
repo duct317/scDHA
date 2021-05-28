@@ -333,7 +333,8 @@ scDHA.class <- function(train = train, train.label = train.label, test = test, n
   
   cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
   doParallel::registerDoParallel(cl, cores = ncores)
-
+  
+  x <- NULL
   result <- foreach(x = latent) %dopar% {
     set.seed(seed)
     train.p <- x[1:length(train.label), ]

@@ -108,6 +108,7 @@ getmode <- function(v) {
 
 nclusterPar <- function(data, nmax = 10) 
 {
+  j <- NULL
   result <- foreach (j = 1:10) %do% {
     set.seed(j)
     idx <- sample(1:nrow(data),min(500, nrow(data)))

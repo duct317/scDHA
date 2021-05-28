@@ -24,6 +24,5 @@ RoxygenNote: 7.1.0
 Suggests: knitr, mclust
 NeedsCompilation: yes
 VignetteBuilder: knitr
-SystemRequirements: GNU make
 URL: https://github.com/duct317/scDHA
 BugReports: https://github.com/duct317/scDHA/issues

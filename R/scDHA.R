@@ -71,6 +71,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, wdec
   parallel::clusterEvalQ(cl,{
     library(scDHA)
   })
+  i <- NULL
   or <- foreach(i = seq(3)) %dopar%
     {
       if (!is.null(seed))
@@ -127,6 +128,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
   parallel::clusterEvalQ(cl,{
     library(scDHA)
   })
+  i <- NULL
   latent <- foreach(i = 1:K) %dopar% {
     if (!is.null(seed))
     {
@@ -293,6 +295,7 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
     parallel::clusterEvalQ(cl,{
       library(scDHA)
     })
+    x <- NULL
     result$all <- foreach(x = latent) %dopar% {
       RhpcBLASctl::blas_set_num_threads(1)
       set.seed(seed)
@@ -432,6 +435,7 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
       parallel::clusterEvalQ(cl,{
         library(scDHA)
       })
+      x <- NULL
       result$all <- foreach(x = latent) %dopar% {
         RhpcBLASctl::blas_set_num_threads(1)
         set.seed(seed)
