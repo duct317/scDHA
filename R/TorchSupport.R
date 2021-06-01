@@ -47,7 +47,7 @@ sampling <- function(mu, var, epsilon_std, lat_dim)
 
 scDHA_VAE <- nn_module(
   "scDHA_VAE",
-  initialize = function(original_dim, im_dim, lat_dim, epsilon_std, batch_norm=TRUE, zero_bias=T) {
+  initialize = function(original_dim, im_dim, lat_dim, epsilon_std, batch_norm=TRUE, zero_bias=TRUE) {
     self$batch_norm <- batch_norm
     self$epsilon_std <- epsilon_std
     self$lat_dim <- lat_dim

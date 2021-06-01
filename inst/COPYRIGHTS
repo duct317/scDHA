@@ -1,0 +1,79 @@
+Overall license
+===============
+
+scDHA: Single-Cell Decomposition using Hierarchical Autoencoder 
+Copyright (C) 2021-2021  Duc Tran
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+The years in the copyright notice above are to be understood as a
+range, including the years on both ends.
+
+Remarks
+=======
+
+-----------------
+k-nearest neighbor spectral clustering
+-----------------
+
+The code in:
+- R/SC.R
+
+was adapted from third-party code to which the following applies:
+
+Copyright 2016-2021 Klaus Schliep
+
+kknn is licensed under the GPLv2.
+
+-----------------
+weighted ensemble clustering
+-----------------------
+
+The code in:
+- R/wMetaC.R
+
+was adapted from third-party code to which the following applies:
+
+SHARP
+
+Copyright © 2018-2021 Shibiao Wan
+
+All rights reserved
+
+SHARP is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+SHARP is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+-----------------
+Rphenograph
+-----------------
+
+The code in:
+- R/PG.R
+- src/Supprot.cpp
+
+was adapted from third-party code to which the following applies:
+
+Copyright 2015-2021 Hao Chen
+
+Rphenograph is licensed under the Artistic-2.0.

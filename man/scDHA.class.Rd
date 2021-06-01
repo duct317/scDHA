@@ -29,3 +29,23 @@ A vector contain classified labels for new data.
 \description{
 Perform classification of new data based on available data.
 }
+\examples{
+\donttest{
+library(scDHA)
+#Load example data (Goolam dataset)
+data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#Log transform the data 
+data <- log2(data + 1)
+#Split data into training and testing sets
+set.seed(1)
+idx <- sample.int(nrow(data), size = round(nrow(data)*0.75))
+train.x <- data[idx, ]; train.y <- label[idx]
+test.x <- data[-idx, ]; test.y <- label[-idx]
+#Predict the labels of cells in testing set
+prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, 
+                          ncores = 2, seed = 1)
+#Calculate accuracy of the predictions
+acc <- round(sum(test.y == prediction)/length(test.y), 2)
+print(paste0("Accuracy = ", acc))
+}
+}

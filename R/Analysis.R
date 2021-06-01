@@ -9,6 +9,20 @@
 #' \itemize{
 #' \item pred - A matrix representing the 2D projection of single-cell data, where rows represent samples and columns represent latent components.
 #' }
+#' @examples
+#' \donttest{
+#' library(scDHA)
+#' #Load example data (Goolam dataset)
+#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#' #Log transform the data 
+#' data <- log2(data + 1)
+#' #Generate clustering result, the input matrix has rows as samples and columns as genes
+#' result <- scDHA(data, ncores = 2, seed = 1)
+#' #Generate 2D representation, the input is the output from scDHA function
+#' result <- scDHA.vis(result, ncores = 2, seed = 1)
+#' #Plot the representation of the dataset, different colors represent different cell types
+#' plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
+#' }
 #' @export
 
 scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
@@ -23,7 +37,7 @@ scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
   } else if (method == "scDHA") {
     return(scDHA.vis.old(sc = sc, ncores = ncores, seed = seed))
   } else {
-    message("'method' should be one of 'UMAP', or 'scDHA'")
+    stop("'method' should be one of 'UMAP', or 'scDHA'")
   }
 }
 
@@ -96,14 +110,13 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
       } 
       
       torch::torch_set_num_threads(ifelse(nrow(data.en) < 1000, 1, 2))
-      torch::torch_set_num_interop_threads(ifelse(nrow(data.en) < 1000, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
 
       model <- scDHA_model_vis(ncol(data.en), ncol(data.list[[1]]$y1))
 
       model_loss <- function(x_or, x_pred) {
         x_pred <- torch_log(x_pred + 1)
-        x_pred <- (x_pred - torch_mean(x_pred, dim = 1, keepdim = T))/torch_std(x_pred, dim = 1, keepdim = T, unbiased = F)
+        x_pred <- (x_pred - torch_mean(x_pred, dim = 1, keepdim = TRUE))/torch_std(x_pred, dim = 1, keepdim = TRUE, unbiased = FALSE)
         x_pred <- x_pred$t()
         x_pred <- x_pred*torch_abs(x_pred)/2
         xent_loss <- torch_exp( -x_pred )
@@ -139,7 +152,6 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
             
             output <- model(torch_tensor(data[idx, ]))
             loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp)), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
-            print(loss)
             if(as.numeric(torch_isnan(loss)) == 0)
             {
               loss$backward()
@@ -183,10 +195,10 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
     }
   }
   
-  top.pos <- order(count, decreasing = T)[1]
+  top.pos <- order(count, decreasing = TRUE)[1]
   top.pos.coor <- matrix(colMeans2(data[idx[[top.pos]], ]), nrow = 1)
   
-  for (i in order(count, decreasing = T)) {
+  for (i in order(count, decreasing = TRUE)) {
     if (length(idx[[i]]) == 0) break
     
     if (length(idx[[i]]) > 1) {
@@ -216,7 +228,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
       idx.tmp <- idx[[top.pos[idx.tmp]]]
       if (length(idx.tmp) > 1) {
         sim.mat.tmp <- cor(data[nontop.pos[i], ], t(data[idx.tmp, ]))
-        idx.tmp <- idx.tmp[order(sim.mat.tmp, decreasing = T)[1:min(5, length(idx.tmp)) ]]
+        idx.tmp <- idx.tmp[order(sim.mat.tmp, decreasing = TRUE)[1:min(5, length(idx.tmp)) ]]
         pred.tmp[nontop.pos[i], ] <- colMeans2(pred[idx.tmp, ] )
       } else {
         pred.tmp[nontop.pos[i], ] <- pred[idx.tmp, ] 
@@ -240,6 +252,22 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 #' @return List with the following keys:
 #' \itemize{
 #' \item pt - Pseudo-time values for each sample.
+#' }
+#' @examples
+#' \donttest{
+#' library(scDHA)
+#' #Load example data (Goolam dataset)
+#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#' #Log transform the data 
+#' data <- log2(data + 1)
+#' #Generate clustering result, the input matrix has rows as samples and columns as genes
+#' result <- scDHA(data, ncores = 2, seed = 1)
+#' #Cell stage order in Goolam dataset
+#' cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
+#' #Generate pseudo-time for each cell, the input is the output from scDHA function
+#' result <- scDHA.pt(result, start.point = 1, ncores = 2, seed = 1)
+#' #Calculate R-squared value 
+#' r2 <- round(cor(result$pt, as.numeric(factor(label, levels = cell.stages)))^2, digits = 2)
 #' }
 #' @export
 scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
@@ -269,7 +297,7 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
     data <- x
     n <- nrow(data)
     adj <- 1 - cor(t(data))
-    g <- graph_from_adjacency_matrix(adj, weighted = T, mode = "undirected")
+    g <- graph_from_adjacency_matrix(adj, weighted = TRUE, mode = "undirected")
     g <- mst(g)
     
     dis <- distances(g)
@@ -324,11 +352,30 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
 #' @param ncores Number of processor cores to use.
 #' @param seed Seed for reproducibility.
 #' @return A vector contain classified labels for new data.
+#' @examples
+#' \donttest{
+#' library(scDHA)
+#' #Load example data (Goolam dataset)
+#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#' #Log transform the data 
+#' data <- log2(data + 1)
+#' #Split data into training and testing sets
+#' set.seed(1)
+#' idx <- sample.int(nrow(data), size = round(nrow(data)*0.75))
+#' train.x <- data[idx, ]; train.y <- label[idx]
+#' test.x <- data[-idx, ]; test.y <- label[-idx]
+#' #Predict the labels of cells in testing set
+#' prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, 
+#'                           ncores = 2, seed = 1)
+#' #Calculate accuracy of the predictions
+#' acc <- round(sum(test.y == prediction)/length(test.y), 2)
+#' print(paste0("Accuracy = ", acc))
+#' }
 #' @export
 scDHA.class <- function(train = train, train.label = train.label, test = test, ncores = 10L, seed = NULL) {
   data <- rbind(train, test)
   prob <- c(rep(1/nrow(train), nrow(train)), rep(1/nrow(test), nrow(test)))
-  sc <- scDHA(data, ncores = ncores, do.clus = F, sample.prob = prob, seed = seed)
+  sc <- scDHA(data, ncores = ncores, do.clus = FALSE, sample.prob = prob, seed = seed)
   latent <- sc$all.latent
   
   cl <- parallel::makeCluster(ncores, outfile = "/dev/null")

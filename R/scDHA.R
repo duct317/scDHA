@@ -22,12 +22,28 @@
 #' \item cluster - A numeric vector containing cluster assignment for each sample. If \code{do.clus = False}, this values is always \code{NULL}.
 #' \item latent - A matrix representing compressed data from the input data, with rows represent samples and columns represent latent variables.
 #' }
+#' @examples
+#' \donttest{
+#' library(scDHA)
+#' #Load example data (Goolam dataset)
+#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#' #Log transform the data 
+#' data <- log2(data + 1)
+#' #Generate clustering result, the input matrix has rows as samples and columns as genes
+#' result <- scDHA(data, ncores = 2, seed = 1)
+#' #The clustering result can be found here 
+#' cluster <- result$cluster
+#' }
 #' @export
 
 
-scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = F, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
   K = 3
+  if(!method %in% c("scDHA", "louvain"))
+  {
+    stop("'method' should be one of 'scDHA', or 'louvain'")
+  }
   if(sparse) {
     if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
     if(max(data) - min(data) > 100)
@@ -63,11 +79,11 @@ scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = F, n = 5000,
   res
 }
 
-gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, wdecay, seed)
+gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncores, wdecay, seed)
 {
   or <- list()
-  cl <- parallel::makeCluster(3, outfile = "/dev/null")
-  registerDoParallel(cl, cores = 3)
+  cl <- parallel::makeCluster(min(3, ncores), outfile = "/dev/null")
+  registerDoParallel(cl, cores = min(3, ncores))
   parallel::clusterEvalQ(cl,{
     library(scDHA)
   })
@@ -84,7 +100,6 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, wdec
       batch_size <- max(round(nrow(data.tmp)/50),2)
       
       torch::torch_set_num_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
-      torch::torch_set_num_interop_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
       
       data_train <- scDHA_dataset(data.tmp)
@@ -120,11 +135,11 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, wdec
 }
 
 latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, ncores, sample.prob, seed)
 {
   latent <- list()
-  cl <- parallel::makeCluster(K, outfile = "/dev/null")
-  doParallel::registerDoParallel(cl, cores = K)
+  cl <- parallel::makeCluster(min(K, ncores), outfile = "/dev/null")
+  doParallel::registerDoParallel(cl, cores = min(K, ncores))
   parallel::clusterEvalQ(cl,{
     library(scDHA)
   })
@@ -138,16 +153,15 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     
     if(nrow(or.da) >= 50000)
     {
-      da <- as.matrix(or.da[sample.int(nrow(or.da), 5000, replace = F, prob = sample.prob),])
+      da <- as.matrix(or.da[sample.int(nrow(or.da), 5000, replace = FALSE, prob = sample.prob),])
       batch_size <- round(nrow(da)/50)
     } else if(nrow(or.da) > 2000)
     {
-      da <- as.matrix(or.da[sample.int(nrow(or.da), 2000, replace = F, prob = sample.prob),])
+      da <- as.matrix(or.da[sample.int(nrow(or.da), 2000, replace = FALSE, prob = sample.prob),])
       batch_size <- round(nrow(da)/50)
     }
     
     torch::torch_set_num_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
-    torch::torch_set_num_interop_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
     RhpcBLASctl::blas_set_num_threads(1)
     
     data_train <- scDHA_dataset(da)
@@ -230,7 +244,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
   latent
 }
 
-scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -255,7 +269,7 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
       if(!is.null(seed)) set.seed((seed+i))
       if(nrow(data) > 2000)
       {
-        ind <- sample.int(nrow(data), 2000, replace = F, prob = sample.prob)
+        ind <- sample.int(nrow(data), 2000, replace = FALSE, prob = sample.prob)
       } else {
         ind <- seq(nrow(data))
       }
@@ -263,7 +277,7 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
       data.tmp
     })
     
-    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay[1], seed = seed)
+    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay[1], seed = seed)
     
     keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
     
@@ -278,7 +292,7 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
   
   #Latent generation
   latent <- latent.generating(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, ncores, sample.prob, seed)
   
   gc(reset = TRUE)
   
@@ -345,7 +359,7 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
   
 }
 
-scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -368,12 +382,12 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
   if (gen_fil) {
     data.list <- lapply(1:3, function(i) {
       if(!is.null(seed)) set.seed((seed+i))
-      ind <- sample.int(nrow(data), 5000, replace = F, prob = sample.prob)
+      ind <- sample.int(nrow(data), 5000, replace = FALSE, prob = sample.prob)
       data.tmp <- as.matrix(data[ind,])
       data.tmp
     })
     
-    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay[1], seed = seed)
+    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay[1], seed = seed)
     
     keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
     
@@ -386,11 +400,11 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
     original_dim_reduce <- ncol(or.da)
   }
   rm(data)
-  gc(reset = T)
+  gc(reset = TRUE)
   
   #Latent generation
   latent <- latent.generating(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, ncores, sample.prob, seed)
   
   gc(reset = TRUE)
   
@@ -468,7 +482,7 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
 #' @examples
 #' \donttest{
 #' #Generate weight variances for each genes
-#' weight_variance <- scDHA.w(data, seed = 1)
+#' weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
 #'
 #' #Plot weight variances for top 5,000 genes
 #' plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
@@ -478,12 +492,12 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
 #' plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
 #' }
 #' @export
-scDHA.w <- function(data = data, sparse = F, ncores = 10L, seed = NULL) {
+scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
   K = 3
   sample.prob = NULL
-  do.clus = T
-  gen_fil = T
+  do.clus = TRUE
+  gen_fil = TRUE
   k = NULL
   if(sparse) {
     if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
@@ -519,14 +533,14 @@ scDHA.w <- function(data = data, sparse = F, ncores = 10L, seed = NULL) {
   }
   w <- res
   w <- (w - min(w))/(max(w) - min(w))
-  w <- sort(w, decreasing = T)
+  w <- sort(w, decreasing = TRUE)
   
   plot(w, xlab = "Genes", ylab = "Normalized Weight Variance")
   
   w
 }
 
-scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -540,7 +554,7 @@ scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = 
     if(!is.null(seed)) set.seed((seed+i))
     if(nrow(data) > 2000)
     {
-      ind <- sample.int(nrow(data), 2000, replace = F, prob = sample.prob)
+      ind <- sample.int(nrow(data), 2000, replace = FALSE, prob = sample.prob)
     } else {
       ind <- seq(nrow(data))
     }
@@ -548,13 +562,13 @@ scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = 
     data.tmp
   })
   
-  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay, seed = seed)
+  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay, seed = seed)
 
   or
   
 }
 
-scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T, do.clus = T, sample.prob = NULL, seed = NULL) {
+scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
   
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
@@ -566,12 +580,12 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = T,
 
   data.list <- lapply(1:3, function(i) {
     if(!is.null(seed)) set.seed((seed+i))
-    ind <- sample.int(nrow(data), 5000, replace = F, prob = sample.prob)
+    ind <- sample.int(nrow(data), 5000, replace = FALSE, prob = sample.prob)
     data.tmp <- as.matrix(data[ind,])
     data.tmp
   })
   
-  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, wdecay = wdecay, seed = seed)
+  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay, seed = seed)
 
   or
   

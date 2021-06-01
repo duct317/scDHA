@@ -14,7 +14,7 @@ wMetaC <- function(nC, hmethod, enN.cluster, minN.cluster, maxN.cluster, sil.thr
   AA = Reduce("+", apply(nC, 2, getA))  #sum over obtained matrices; execute along the column and then matrix sum
   AA = AA/C
 
-  indA = Matrix::which(AA != 0, arr.ind = T)  #find non-zero indices of AA
+  indA = Matrix::which(AA != 0, arr.ind = TRUE)  #find non-zero indices of AA
   nd = vapply(AA[indA], function(x) x * (1 - x), numeric(1))
 
   newAA = sparseMatrix(i = indA[, 1], j = indA[, 2], x = nd, dims = c(N, N))
@@ -49,7 +49,6 @@ wMetaC <- function(nC, hmethod, enN.cluster, minN.cluster, maxN.cluster, sil.thr
 
   tf = hres$f
   v = hres$v
-  cat("The number of clusters before voting is: ", hres$optN.cluster, "\n")
 
   newnC[] <- vapply(newnC, function(q) tf[match(q, R)], numeric(1))  #apply to every element; reorganizing the clusters for different results
 
@@ -72,9 +71,6 @@ wMetaC <- function(nC, hmethod, enN.cluster, minN.cluster, maxN.cluster, sil.thr
 
     N.cluster = length(unique(finalC))
   }
-  cat("The optimal number of clusters for ensemble clustering is:", N.cluster,
-      "\n")
-
 
   # For ease of visualization
   uC = unique(finalC)#unique clusters
@@ -130,7 +126,7 @@ getA <- function(rowColor) {
   })
 
   # reshape to the indices
-  allind = matrix(unlist(t(tmp)), ncol = 2, byrow = F)  #need transpose
+  allind = matrix(unlist(t(tmp)), ncol = 2, byrow = FALSE)  #need transpose
   A = sparseMatrix(i = allind[, 1], j = allind[, 2], x = 1, dims = c(N, N))  #non-zero entries
   return(A)
 }
@@ -221,7 +217,7 @@ get_opt_hclust <- function(mat, hmethod, N.cluster, minN.cluster, maxN.cluster, 
     sil = silhouette(v, d)
     msil = median(sil[, 3])
     ch0 = intCriteria(data.matrix(mat), as.integer(v), "Calinski_Harabasz")
-    CHind = unlist(ch0, use.names = F)  #convert a list to a vector/value
+    CHind = unlist(ch0, use.names = FALSE)  #convert a list to a vector/value
     optN.cluster = N.cluster
   } 
 

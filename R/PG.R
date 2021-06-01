@@ -12,29 +12,16 @@ phenograph <- function(data, k=30){
     stop("k must be smaller than the total number of points!")
   }
   
-  message("Run Rphenograph starts:","\n", 
-          "  -Input data of ", nrow(data)," rows and ", ncol(data), " columns","\n",
-          "  -k is set to ", k)
-  
-  cat("  Finding nearest neighbors...")
   t1 <- system.time(neighborMatrix <- find_neighbors(data, k=k+1)[,-1])
-  cat("DONE ~",t1[3],"s\n", " Compute jaccard coefficient between nearest-neighbor sets...")
   t2 <- system.time(links <- jaccard_coeff(neighborMatrix))
   
-  cat("DONE ~",t2[3],"s\n", " Build undirected graph from the weighted links...")
   links <- links[links[,1]>0, ]
   relations <- as.data.frame(links)
   colnames(relations)<- c("from","to","weight")
   t3 <- system.time(g <- graph.data.frame(relations, directed=FALSE))
 
-  cat("DONE ~",t3[3],"s\n", " Run louvain clustering on the graph ...")
   t4 <- system.time(community <- igraph::cluster_louvain(g))
-  cat("DONE ~",t4[3],"s\n")
-  
-  message("Run Rphenograph DONE, totally takes ", sum(c(t1[3],t2[3],t3[3],t4[3])), "s.")
-  cat("  Return a community class\n  -Modularity value:", modularity(community),"\n")
-  cat("  -Number of clusters:", length(unique(membership(community))))
-  
+
   return(list(g, community))
 }
 

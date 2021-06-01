@@ -4,7 +4,7 @@
 \alias{scDHA.w}
 \title{scDHA.w}
 \usage{
-scDHA.w(data = data, sparse = F, ncores = 10L, seed = NULL)
+scDHA.w(data = data, sparse = FALSE, ncores = 10L, seed = NULL)
 }
 \arguments{
 \item{data}{Gene expression matrix, with rows represent samples and columns represent genes.}
@@ -24,7 +24,7 @@ This function will plot a graph with normalized weights of all genes so user can
 \examples{
 \donttest{
 #Generate weight variances for each genes
-weight_variance <- scDHA.w(data, seed = 1)
+weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
 
 #Plot weight variances for top 5,000 genes
 plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))

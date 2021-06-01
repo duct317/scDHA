@@ -225,7 +225,7 @@ find.vec <- function(node, graph, w, l, p, q) {
     weight <- weight * q / rowSums2(weight)
     if (is.null(pre.node)) {
       pre.node <- c.node
-      c.node <- sample(neighbor[1, ], w, prob = weight[1, ], replace = T)
+      c.node <- sample(neighbor[1, ], w, prob = weight[1, ], replace = TRUE)
     } else {
       tmp.node <- c.node
       c.node <- sapply(1:w, function(x) {
