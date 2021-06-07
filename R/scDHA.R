@@ -23,7 +23,6 @@
 #' \item latent - A matrix representing compressed data from the input data, with rows represent samples and columns represent latent variables.
 #' }
 #' @examples
-#' \donttest{
 #' library(scDHA)
 #' #Load example data (Goolam dataset)
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -33,7 +32,6 @@
 #' result <- scDHA(data, ncores = 2, seed = 1)
 #' #The clustering result can be found here 
 #' cluster <- result$cluster
-#' }
 #' @export
 
 
@@ -79,6 +77,8 @@ scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5
   res
 }
 
+on_cran <- function() !(identical(Sys.getenv("NOT_CRAN"), "true") | identical(Sys.getenv("NOT_CRAN"), ""))
+
 gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncores, wdecay, seed)
 {
   or <- list()
@@ -98,9 +98,16 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       
       data.tmp <- data.list[[i]]
       batch_size <- max(round(nrow(data.tmp)/50),2)
+      epochs <- 10
       
       torch::torch_set_num_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
+      
+      if(on_cran())
+      {
+        batch_size <- nrow(data.tmp)
+        epochs <- 5
+      }
       
       data_train <- scDHA_dataset(data.tmp)
       dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
@@ -109,7 +116,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       
       optimizer <- optim_adamw(model$parameters, lr = 1e-3, weight_decay = wdecay, eps = 1e-7)
       
-      for (epoch in 1:10) {
+      for (epoch in 1:epochs) {
         optimizer$zero_grad()
         for (b in enumerate(dl)) {
           output <- model(b[[1]])
@@ -163,6 +170,12 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     
     torch::torch_set_num_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
     RhpcBLASctl::blas_set_num_threads(1)
+    
+    if(on_cran())
+    {
+      batch_size <- nrow(da)
+      epochs <- c(5,5)
+    }
     
     data_train <- scDHA_dataset(da)
     dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
@@ -480,17 +493,18 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
 #' @param seed Seed for reproducibility.
 #' @return A plot with normalized weights of all genes.
 #' @examples
-#' \donttest{
+#' library(scDHA)
+#' #Load example data (Goolam dataset)
+#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#' #Log transform the data 
+#' data <- log2(data + 1)
 #' #Generate weight variances for each genes
 #' weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
-#'
 #' #Plot weight variances for top 5,000 genes
-#' plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
-#'
+#' #plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
 #' #Plot the change of weight variances for top 5,000 genes
-#' weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
-#' plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
-#' }
+#' #weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
+#' #plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
 #' @export
 scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
@@ -597,10 +611,14 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TR
 #' @description Goolam dataset in list format, include scRNA-seq data and cell type information.
 "Goolam"
 
+#' @title Goolam_result
+#'
+#' @description Result of processing Goolam dataset using 'scDHA' function.
+"Goolam_result"
 
 .onAttach <- function(libname, pkgname) {
   if(!torch::torch_is_installed())
   {
-  packageStartupMessage("libtorch is not installed. Use `torch::install_torch()` to download and install libtorch")
+    packageStartupMessage("libtorch is not installed. Use `torch::install_torch()` to download and install libtorch")
   }
 }

@@ -10,19 +10,22 @@
 #' \item pred - A matrix representing the 2D projection of single-cell data, where rows represent samples and columns represent latent components.
 #' }
 #' @examples
-#' \donttest{
 #' library(scDHA)
 #' #Load example data (Goolam dataset)
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #' #Log transform the data 
 #' data <- log2(data + 1)
+#' \donttest{
 #' #Generate clustering result, the input matrix has rows as samples and columns as genes
 #' result <- scDHA(data, ncores = 2, seed = 1)
+#' }
+#' #Load preprocessing data
+#' data('Goolam_result')
+#' result <- Goolam_result
 #' #Generate 2D representation, the input is the output from scDHA function
 #' result <- scDHA.vis(result, ncores = 2, seed = 1)
 #' #Plot the representation of the dataset, different colors represent different cell types
 #' plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
-#' }
 #' @export
 
 scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
@@ -254,21 +257,24 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 #' \item pt - Pseudo-time values for each sample.
 #' }
 #' @examples
-#' \donttest{
 #' library(scDHA)
 #' #Load example data (Goolam dataset)
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #' #Log transform the data 
 #' data <- log2(data + 1)
+#' \donttest{
 #' #Generate clustering result, the input matrix has rows as samples and columns as genes
 #' result <- scDHA(data, ncores = 2, seed = 1)
+#' }
+#' #Load preprocessing data
+#' data('Goolam_result')
+#' result <- Goolam_result
 #' #Cell stage order in Goolam dataset
 #' cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
 #' #Generate pseudo-time for each cell, the input is the output from scDHA function
 #' result <- scDHA.pt(result, start.point = 1, ncores = 2, seed = 1)
 #' #Calculate R-squared value 
 #' r2 <- round(cor(result$pt, as.numeric(factor(label, levels = cell.stages)))^2, digits = 2)
-#' }
 #' @export
 scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(ncores, 4))
@@ -353,7 +359,6 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
 #' @param seed Seed for reproducibility.
 #' @return A vector contain classified labels for new data.
 #' @examples
-#' \donttest{
 #' library(scDHA)
 #' #Load example data (Goolam dataset)
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -370,7 +375,6 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
 #' #Calculate accuracy of the predictions
 #' acc <- round(sum(test.y == prediction)/length(test.y), 2)
 #' print(paste0("Accuracy = ", acc))
-#' }
 #' @export
 scDHA.class <- function(train = train, train.label = train.label, test = test, ncores = 10L, seed = NULL) {
   data <- rbind(train, test)

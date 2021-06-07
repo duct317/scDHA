@@ -25,17 +25,20 @@ a list with the following keys:
 Generating 2D embeded data for visulation.
 }
 \examples{
-\donttest{
 library(scDHA)
 #Load example data (Goolam dataset)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #Log transform the data 
 data <- log2(data + 1)
+\donttest{
 #Generate clustering result, the input matrix has rows as samples and columns as genes
 result <- scDHA(data, ncores = 2, seed = 1)
+}
+#Load preprocessing data
+data('Goolam_result')
+result <- Goolam_result
 #Generate 2D representation, the input is the output from scDHA function
 result <- scDHA.vis(result, ncores = 2, seed = 1)
 #Plot the representation of the dataset, different colors represent different cell types
 plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
-}
 }

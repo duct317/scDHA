@@ -30,7 +30,6 @@ A vector contain classified labels for new data.
 Perform classification of new data based on available data.
 }
 \examples{
-\donttest{
 library(scDHA)
 #Load example data (Goolam dataset)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -47,5 +46,4 @@ prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x,
 #Calculate accuracy of the predictions
 acc <- round(sum(test.y == prediction)/length(test.y), 2)
 print(paste0("Accuracy = ", acc))
-}
 }

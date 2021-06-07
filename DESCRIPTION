@@ -17,7 +17,10 @@ Imports: matrixStats, foreach, doParallel, igraph, Matrix, uwot,
     cluster, clusterCrit, Rcpp, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
 RoxygenNote: 7.1.0
-Suggests: knitr, mclust
+Suggests: 
+    testthat,
+    knitr,
+    mclust
 NeedsCompilation: yes
 VignetteBuilder: knitr
 URL: https://github.com/duct317/scDHA

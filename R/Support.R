@@ -1,7 +1,7 @@
 #' @import doParallel
 #' @importFrom stats kmeans
 #' @importFrom foreach %dopar% foreach %do%
-
+#' @importFrom methods is
 
 clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
 {
@@ -13,7 +13,7 @@ clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
   } else
   {
     kknn <- try(specClust(data, k, nn = 7))
-    while (class(kknn) == "try-error") {
+    while (is(kknn, "try-error")) {
       k <- k +1
       kknn <- try(specClust(data, k, nn = 7))
     }
@@ -117,7 +117,7 @@ nclusterPar <- function(data, nmax = 10)
     for (i in 2:nmax) {
 
       kknn <- try(specClust(data[idx,], i, nn = 7))
-      if (class(kknn) != "try-error")
+      if (!is(kknn, "try-error"))
       {
         to.test[i,1] <- kknn$betweenss/kknn$totss
         to.test[i,2] <- kknn$tot.withinss
