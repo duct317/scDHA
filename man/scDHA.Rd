@@ -49,6 +49,7 @@ List with the following keys:
 The main function to perform dimension deduction and clustering.
 }
 \examples{
+\donttest{
 library(scDHA)
 #Load example data (Goolam dataset)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -58,4 +59,5 @@ data <- log2(data + 1)
 result <- scDHA(data, ncores = 2, seed = 1)
 #The clustering result can be found here 
 cluster <- result$cluster
+}
 }
