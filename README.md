@@ -3,7 +3,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 
 # News
 - The package is now available on [CRAN](https://cran.r-project.org/package=scDHA).
-- The backend changes from Tensorflow to Torch. Torch is called directly from R. Python environment is not required. 
+- The backend changes from Tensorflow to Torch. Torch can be called directly from R. Python environment is no longer required. 
 
 # How to install:
 - The package can be installed from this repository.
