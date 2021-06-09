@@ -1,29 +1,27 @@
 Package: scDHA
 Type: Package
-Title: Single-cell Decomposition using Hierarchical Autoencoder 
-Version: 1.0.0
+Title: Single-Cell Decomposition using Hierarchical Autoencoder 
+Version: 1.1.0
 Authors@R: c(
     person("Duc", "Tran", , "duct@nevada.unr.edu", role = c("aut", "cre")),
-    person("Hung", "Nguyen", role = c("aut")),
-    person("Bang", "Tran", role = c("aut")),
-    person("Carlo", "La Vecchia", role = c("aut")),
-    person("Hung", "Luu", role = c("aut")),
     person("Tin", "Nguyen", role = c("fnd"))
     )
 Maintainer: Duc Tran <duct@nevada.unr.edu>
-Description: Single-cell Decomposition using Hierarchical Autoencoder (scDHA) is a fast and accurate pipeline for single-cell analyses. 
-    The scDHA software package can perform clustering, dimension reduction and visualization, classification, and time-trajectory inference on single-cell data.
-License: LGPL
+Description: Provides a fast and accurate pipeline for single-cell analyses. 
+    The 'scDHA' software package can perform clustering, dimension reduction and visualization, classification, and time-trajectory inference on single-cell data (Tran et.al. (2021) <DOI:10.1038/s41467-021-21312-2>).
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 3.4)
-Imports: matrixStats, foreach, keras, tensorflow, doParallel, igraph, Matrix, 
-    cluster, clusterCrit, Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy, methods
+Imports: matrixStats, foreach, doParallel, igraph, Matrix, uwot,
+    cluster, clusterCrit, Rcpp, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
 RoxygenNote: 7.1.0
-Suggests: knitr, SingleCellExperiment, mclust
+Suggests: 
+    testthat,
+    knitr,
+    mclust
 NeedsCompilation: yes
 VignetteBuilder: knitr
-SystemRequirements: GNU make
 URL: https://github.com/duct317/scDHA
 BugReports: https://github.com/duct317/scDHA/issues

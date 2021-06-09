@@ -5,12 +5,12 @@
 \alias{Goolam}
 \title{Goolam}
 \format{
-An object of class \code{SingleCellExperiment} with 41428 rows and 124 columns.
+An object of class \code{list} of length 2.
 }
 \usage{
 Goolam
 }
 \description{
-Goolam dataset in SingleCellExperiment format, include scRNA-seq data and cell type information.
+Goolam dataset in list format, include scRNA-seq data and cell type information.
 }
 \keyword{datasets}

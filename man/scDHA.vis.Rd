@@ -4,12 +4,14 @@
 \alias{scDHA.vis}
 \title{scDHA visulization}
 \usage{
-scDHA.vis(sc = sc, ncores = 15L, seed = NULL)
+scDHA.vis(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
 }
 \arguments{
 \item{sc}{Embedding object produced by the \code{scDHA} function.}
 
-\item{ncores}{number of processor cores to use.}
+\item{method}{Visualization method to use. It can be "UMAP" or "scDHA". The default setting is "UMAP".}
+
+\item{ncores}{Number of processor cores to use.}
 
 \item{seed}{Seed for reproducibility.}
 }
@@ -21,4 +23,19 @@ a list with the following keys:
 }
 \description{
 Generating 2D embeded data for visulation.
+}
+\examples{
+\donttest{
+library(scDHA)
+#Load example data (Goolam dataset)
+data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#Log transform the data 
+data <- log2(data + 1)
+#Generate clustering result, the input matrix has rows as samples and columns as genes
+result <- scDHA(data, ncores = 2, seed = 1)
+#Generate 2D representation, the input is the output from scDHA function
+result <- scDHA.vis(result, ncores = 2, seed = 1)
+#Plot the representation of the dataset, different colors represent different cell types
+plot(result$pred, col=factor(label), xlab = "scDHA1", ylab = "scDHA2")
+}
 }

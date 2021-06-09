@@ -22,7 +22,7 @@ fast.table <- function (data)
 
 createFolds <- function(vec, k)
 {
-  rand.vec <- sample.int(length(vec), replace = F, n = length(vec))
+  rand.vec <- sample.int(length(vec), replace = FALSE, n = length(vec))
   tmp <- round(seq(1, max(vec), length.out = k+1))
   res <- list()
   for (i in 1:k) {
@@ -189,7 +189,6 @@ specClust <- function (data, centers=NULL, nn = 7, method = "symmetric", gmax=NU
     U[[2]] =  U[[2]]/rs
   }
   result = kmeans(U[[2]], centers = centers, nstart = 50, iter.max = 100, ...)
-  #result = kmeans(scale(U[[2]], center = F), centers = centers, nstart = 50, iter.max = 100, ...)
   archeType = getClosest(U[[2]][indAll, ], result$centers)
   result$eigenvalue = U[[1]]
   result$eigenvector = U[[2]]

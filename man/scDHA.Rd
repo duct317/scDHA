@@ -7,11 +7,12 @@
 scDHA(
   data = data,
   k = NULL,
-  sparse = F,
+  method = "scDHA",
+  sparse = FALSE,
   n = 5000,
-  ncores = 15L,
-  gen_fil = T,
-  do.clus = T,
+  ncores = 10L,
+  gen_fil = TRUE,
+  do.clus = TRUE,
   sample.prob = NULL,
   seed = NULL
 )
@@ -20,6 +21,8 @@ scDHA(
 \item{data}{Gene expression matrix, with rows represent samples and columns represent genes.}
 
 \item{k}{Number of clusters, leave as default for auto detection. Has no effect when \code{do.clus = False}.}
+
+\item{method}{Method used for clustering. It can be "scDHA" or "louvain". The default setting is "scDHA".}
 
 \item{sparse}{Boolen variable indicating whether data is a sparse matrix. The input must be a non negative sparse matrix.}
 
@@ -44,4 +47,17 @@ List with the following keys:
 }
 \description{
 The main function to perform dimension deduction and clustering.
+}
+\examples{
+\donttest{
+library(scDHA)
+#Load example data (Goolam dataset)
+data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
+#Log transform the data 
+data <- log2(data + 1)
+#Generate clustering result, the input matrix has rows as samples and columns as genes
+result <- scDHA(data, ncores = 2, seed = 1)
+#The clustering result can be found here 
+cluster <- result$cluster
+}
 }

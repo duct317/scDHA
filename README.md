@@ -1,19 +1,21 @@
 # scDHA
 The scDHA software package can perform cell segregation through unsupervised learning, dimension reduction and visualization, cell classification, and time-trajectory inference on single-cell RNA sequencing data. 
 
+# News
+- The package is now available on [CRAN](https://cran.r-project.org/package=scDHA).
+- The machine learning framework is changed from Tensorflow to Torch. Torch can be called directly from R. Python environment is no longer required. 
+
 # How to install:
 - The package can be installed from this repository.
 - Install devtools: `utils::install.packages('devtools')`
 - Install the package using: `devtools::install_github('duct317/scDHA')`  
   Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
-- If necessary, install miniconda: `reticulate::install_miniconda(force = T)`
-- Install tensorflow and keras in python using: `keras::install_keras(tensorflow = "1.10.0")`
-- For more information about installation of keras, please visit https://keras.rstudio.com/
+- When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`  
+  `libtorch` can be installed using: `torch::install_torch()`
 
 # To run the Goolam example:
 - Load the package: `library(scDHA)`
-- Load SingleCellExperiment package to read dataset: `library(SingleCellExperiment)`
-- Load Goolam dataset: `data('Goolam'); data <- t(assay(Goolam)); label <- Goolam$cell_type1`
+- Load Goolam dataset: `data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)`
 - Log transform the data: `data <- log2(data + 1)`
 - Generating clustering result: `result <- scDHA(data, seed = 1)`
 - The clustering result can be found here: `cluster <- result$cluster`

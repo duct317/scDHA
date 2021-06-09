@@ -24,7 +24,7 @@ In one joint framework, the scDHA software package conducts cell segregation thr
 
 # Installation
 ### Install scDHA package and other requirements
-scDHA can be installed fron GitHub using below instruction. scDHA depends on the `keras` package in python to build and train the autoencoders. You need to have your python environment set up before installing `keras`. You can install `miniconda` to quickly set it up using below code.
+scDHA can be installed fron GitHub or CRAN using below instruction. scDHA depends on the `torch` package to build and train the autoencoders. When scDHA package is loaded, it will check for the availability of `C++ libtorch`. `torch` package can be used to install `C++ libtorch`, which is necessary for neural network computation. 
 ```{r, eval=FALSE}
 #Install devtools: 
 utils::install.packages('devtools')
@@ -33,18 +33,17 @@ utils::install.packages('devtools')
 devtools::install_github('duct317/scDHA')
 #With manual and vignette: 
 devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)
+#Or from CRAN:
+install.packages("scDHA")
 
-#Install tensorflow and keras in python using (install miniconda if necessary): 
-if(is(try(reticulate::conda_version()), "try-error")) reticulate::install_miniconda(force = T)
-keras::install_keras(method = "conda", tensorflow = "1.10.0")
-
-#For more information about installation of keras, please visit https://keras.rstudio.com/
+#When the package is loaded, it will check for C++ libtorch 
+library(scDHA)
+#libtorch can be installed using:
+torch::install_torch()
 ```
 
 ### Install other necessary packages
 ```{r, eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-if (!requireNamespace("SingleCellExperiment", quietly = TRUE)) BiocManager::install("SingleCellExperiment")
 if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
 ```
 
@@ -52,13 +51,12 @@ if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
 # Analysis on Goolam dataset
 
 ```{r, eval=FALSE}
-library(SingleCellExperiment)
 library(scDHA)
 #Load example data (Goolam dataset)
 data("Goolam")
 
 #Get data matrix and label
-data <- t(assay(Goolam)); label <- as.character(Goolam$cell_type1)
+data <- t(Goolam$data); label <- as.character(Goolam$label)
 
 #Log transform the data 
 data <- log2(data + 1)

@@ -1,7 +1,7 @@
 #' @import doParallel
 #' @importFrom stats kmeans
 #' @importFrom foreach %dopar% foreach %do%
-
+#' @importFrom methods is
 
 clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
 {
@@ -13,7 +13,7 @@ clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
   } else
   {
     kknn <- try(specClust(data, k, nn = 7))
-    while (class(kknn) == "try-error") {
+    while (is(kknn, "try-error")) {
       k <- k +1
       kknn <- try(specClust(data, k, nn = 7))
     }
@@ -53,6 +53,54 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
   
 }
 
+clus.louvain <- function(data)
+{
+  if(nrow(data) <= 10000)
+  {
+    n <- nrow(data)
+    nn <- 30
+    clus.tmp <- membership(phenograph(data, nn)[[2]])
+    while (length(clus.tmp) != n) {
+      nn <- nn + 10
+      clus.tmp <- membership(phenograph(data, nn)[[2]])
+    }
+    res <- clus.tmp
+  } else {
+    n <- 9900
+    ind <- sample.int(nrow(data), n)
+    ind1 <- (1:nrow(data))[-ind]
+    tmp <- data[ind,]
+    tmp1 <- data[-ind,]
+    
+    nn <- 30
+    clus.tmp <- membership(phenograph(tmp, nn)[[2]])
+    while (length(clus.tmp) != n) {
+      nn <- nn + 10
+      clus.tmp <- membership(phenograph(tmp, nn)[[2]])
+    }
+    
+    nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
+    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+    for (i in 2:length(folds)) {
+      dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
+      for (j in 1:nrow(dis.tmp)) {
+        nn.tmp[folds[i-1] - 1 + j,   ] <- order(dis.tmp[j,])[1:10]
+      }
+    }
+    
+    res <- rep(0, nrow(data))
+    res[ind] <- clus.tmp
+    
+    for (i in 1:nrow(nn.tmp)) {
+      tmp2 <- nn.tmp[i, ]
+      tmp3 <- clus.tmp[tmp2]
+      res[ind1[i]] <- getmode(tmp3)
+    }
+  }
+  
+  res
+}
+
 getmode <- function(v) {
   uniqv <- unique(v)
   uniqv[which.max(tabulate(match(v, uniqv)))]
@@ -60,6 +108,7 @@ getmode <- function(v) {
 
 nclusterPar <- function(data, nmax = 10) 
 {
+  j <- NULL
   result <- foreach (j = 1:10) %do% {
     set.seed(j)
     idx <- sample(1:nrow(data),min(500, nrow(data)))
@@ -68,7 +117,7 @@ nclusterPar <- function(data, nmax = 10)
     for (i in 2:nmax) {
 
       kknn <- try(specClust(data[idx,], i, nn = 7))
-      if (class(kknn) != "try-error")
+      if (!is(kknn, "try-error"))
       {
         to.test[i,1] <- kknn$betweenss/kknn$totss
         to.test[i,2] <- kknn$tot.withinss
@@ -176,7 +225,7 @@ find.vec <- function(node, graph, w, l, p, q) {
     weight <- weight * q / rowSums2(weight)
     if (is.null(pre.node)) {
       pre.node <- c.node
-      c.node <- sample(neighbor[1, ], w, prob = weight[1, ], replace = T)
+      c.node <- sample(neighbor[1, ], w, prob = weight[1, ], replace = TRUE)
     } else {
       tmp.node <- c.node
       c.node <- sapply(1:w, function(x) {
@@ -219,3 +268,12 @@ getmode1 <- function(v) {
 }
 
 
+to_categorical <- function(cluster) {
+  if(min(cluster) == 0) cluster <- cluster + 1
+  tmp <- matrix(0, ncol = max(cluster), nrow = length(cluster))
+  unique_cl <- seq(max(cluster))
+  for (i in 1:length(unique_cl)) {
+    tmp[which(cluster == unique_cl[i]) , i] <- 1
+  }
+  tmp
+}
