@@ -1,7 +1,11 @@
 library(testthat)
 library(scDHA)
 
-if((!torch::torch_is_installed()) & (tolower(Sys.info()[["sysname"]]) != "windows"))
+on_cran <- function() !identical(Sys.getenv("NOT_CRAN"), "true")
+
+if((!torch::torch_is_installed()) & 
+   (tolower(Sys.info()[["sysname"]]) != "windows") & 
+   (!on_cran()))
 {
   torch::install_torch()
 }

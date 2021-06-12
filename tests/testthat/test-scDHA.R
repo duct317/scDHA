@@ -1,5 +1,6 @@
 test_that("scDHA can run", {
   skip_on_os("windows")
+  skip_on_cran()
   
   #Load example data (Goolam dataset)
   data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -14,6 +15,7 @@ test_that("scDHA can run", {
 
 test_that("scDHA.w can run", {
   skip_on_os("windows")
+  skip_on_cran()
   
   #Load example data (Goolam dataset)
   data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
@@ -51,6 +53,7 @@ test_that("scDHA.pt can run", {
 
 test_that("scDHA.class can run", {
   skip_on_os("windows")
+  skip_on_cran()
   
   #Load example data (Goolam dataset)
   data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
