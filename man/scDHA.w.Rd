@@ -28,12 +28,15 @@ library(scDHA)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #Log transform the data 
 data <- log2(data + 1)
-#Generate weight variances for each genes
-weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
-#Plot weight variances for top 5,000 genes
-#plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
-#Plot the change of weight variances for top 5,000 genes
-#weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
-#plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+if(torch::torch_is_installed()) #scDHA need libtorch installed
+{
+  #Generate weight variances for each genes
+  weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
+  #Plot weight variances for top 5,000 genes
+  #plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
+  #Plot the change of weight variances for top 5,000 genes
+  #weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
+  #plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+}
 }
 }

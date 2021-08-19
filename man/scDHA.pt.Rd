@@ -31,13 +31,16 @@ library(scDHA)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #Log transform the data 
 data <- log2(data + 1)
-#Generate clustering result, the input matrix has rows as samples and columns as genes
-result <- scDHA(data, ncores = 2, seed = 1)
-#Cell stage order in Goolam dataset
-cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
-#Generate pseudo-time for each cell, the input is the output from scDHA function
-result <- scDHA.pt(result, start.point = 1, ncores = 2, seed = 1)
-#Calculate R-squared value 
-r2 <- round(cor(result$pt, as.numeric(factor(label, levels = cell.stages)))^2, digits = 2)
+if(torch::torch_is_installed()) #scDHA need libtorch installed
+{
+  #Generate clustering result, the input matrix has rows as samples and columns as genes
+  result <- scDHA(data, ncores = 2, seed = 1)
+  #Cell stage order in Goolam dataset
+  cell.stages <- c("2cell", "4cell", "8cell", "16cell", "blast")
+  #Generate pseudo-time for each cell, the input is the output from scDHA function
+  result <- scDHA.pt(result, start.point = 1, ncores = 2, seed = 1)
+  #Calculate R-squared value 
+  r2 <- round(cor(result$pt, as.numeric(factor(label, levels = cell.stages)))^2, digits = 2)
+}
 }
 }
