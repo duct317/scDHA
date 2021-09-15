@@ -116,7 +116,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       }
       
       data_train <- scDHA_dataset(data.tmp)
-      dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
+      dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
       
       model <- scDHA_AE(original_dim, 32)
       
@@ -189,7 +189,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     }
     
     data_train <- scDHA_dataset(da)
-    dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
+    dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
     
     model <- scDHA_VAE(original_dim_reduce, intermediate_dim, latent_dim, epsilon_std, (nrow(da) > 500))
     

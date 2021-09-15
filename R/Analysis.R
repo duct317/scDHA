@@ -279,6 +279,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(ncores, 4))
   lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.75)
+  if(length(lat.idx) == 0) lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.5)
   tmp.list <- lapply(lat.idx, function(i) sc$all.latent[[i]])
   
   if(nrow(tmp.list[[1]]) <= 5000)
@@ -289,6 +290,13 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   } else {
     set.seed(seed)
     idx.all <- sample.int(nrow(tmp.list[[1]]), 4900)
+    if(start.point %in% idx.all)
+    {
+      start.point <- which(idx.all == start.point)
+    } else {
+      idx.all <- c(start.point, idx.all)
+      start.point <- 1
+    }
     all.res <- sc$all.res
     tmp.list.or <- tmp.list
     
