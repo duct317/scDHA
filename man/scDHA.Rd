@@ -55,9 +55,12 @@ library(scDHA)
 data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #Log transform the data 
 data <- log2(data + 1)
-#Generate clustering result, the input matrix has rows as samples and columns as genes
-result <- scDHA(data, ncores = 2, seed = 1)
-#The clustering result can be found here 
-cluster <- result$cluster
+if(torch::torch_is_installed()) #scDHA need libtorch installed
+{
+  #Generate clustering result, the input matrix has rows as samples and columns as genes
+  result <- scDHA(data, ncores = 2, seed = 1)
+  #The clustering result can be found here 
+  cluster <- result$cluster
+}
 }
 }

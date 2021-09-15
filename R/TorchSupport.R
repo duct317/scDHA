@@ -293,3 +293,23 @@ scDHA_model_vis <- nn_module(
     z
   }
 )
+
+# check_grad_nan <- function(parameters) {
+#   if (is(parameters, "torch_tensor"))
+#     parameters <- list(parameters)
+#   parameters <- Filter(function(x) !is_undefined_tensor(x$grad), parameters)
+#   for (p in parameters) {
+#     if(as.numeric(torch_sum(torch_isnan(p$grad$data()))) != 0) return(TRUE)
+#   }
+#   FALSE
+# }
+
+check_grad_nan <- function(parameters) {
+  if (is(parameters, "torch_tensor"))
+    parameters <- list(parameters)
+  parameters <- Filter(function(x) !is_undefined_tensor(x$grad), parameters)
+  for (p in parameters) {
+    if(as.numeric(torch_isnan(p$grad$data())$any())) return(TRUE)
+  }
+  FALSE
+}

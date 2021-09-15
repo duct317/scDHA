@@ -29,10 +29,13 @@
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #' #Log transform the data 
 #' data <- log2(data + 1)
-#' #Generate clustering result, the input matrix has rows as samples and columns as genes
-#' result <- scDHA(data, ncores = 2, seed = 1)
-#' #The clustering result can be found here 
-#' cluster <- result$cluster
+#' if(torch::torch_is_installed()) #scDHA need libtorch installed
+#' {
+#'   #Generate clustering result, the input matrix has rows as samples and columns as genes
+#'   result <- scDHA(data, ncores = 2, seed = 1)
+#'   #The clustering result can be found here 
+#'   cluster <- result$cluster
+#' }
 #' }
 #' @export
 
@@ -69,6 +72,7 @@ scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5
     }
     data <- normalize_data_dense(data)
   }
+  data@x[is.na(data@x)] <- 0
   gc()
   if(nrow(data) >= 50000)
   {
@@ -112,7 +116,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       }
       
       data_train <- scDHA_dataset(data.tmp)
-      dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
+      dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
       
       model <- scDHA_AE(original_dim, 32)
       
@@ -124,6 +128,11 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
           output <- model(b[[1]])
           loss <- torch::nnf_mse_loss(output, b[[1]])
           loss$backward()
+          if(check_grad_nan(model$parameters))
+          {
+            optimizer$zero_grad()
+            next()
+          }
           optimizer$step()
           optimizer$zero_grad()
           with_no_grad({
@@ -180,7 +189,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     }
     
     data_train <- scDHA_dataset(da)
-    dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE)
+    dl <- data_train %>% dataloader(batch_size = batch_size, shuffle = TRUE, drop_last = TRUE)
     
     model <- scDHA_VAE(original_dim_reduce, intermediate_dim, latent_dim, epsilon_std, (nrow(da) > 500))
     
@@ -192,6 +201,11 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         output <- model(b[[1]])
         loss <- torch_mean(torch_abs(output[[3]] - b[[1]])) + torch_mean(torch_abs(output[[4]] - b[[1]]))
         loss$backward()
+        if(check_grad_nan(model$parameters))
+        {
+          optimizer$zero_grad()
+          next()
+        }
         optimizer$step()
         optimizer$zero_grad()
       }
@@ -212,6 +226,11 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         output <- model(b[[1]])
         loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
         loss$backward()
+        if(check_grad_nan(model$parameters))
+        {
+          optimizer$zero_grad()
+          next()
+        }
         optimizer$step()
         optimizer$zero_grad()
       }
@@ -238,6 +257,11 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         output <- model(b[[1]])
         loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
         loss$backward()
+        if(check_grad_nan(model$parameters))
+        {
+          optimizer$zero_grad()
+          next()
+        }
         optimizer$step()
         optimizer$zero_grad()
       }
@@ -436,8 +460,7 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
     parallel::clusterEvalQ(cl,{
       library(scDHA)
     })
-    
-    idx <- sample.int(nrow(latent[[1]] ), size = 5000)
+
     result$all <- foreach(x = latent) %dopar% {
       RhpcBLASctl::blas_set_num_threads(1)
       set.seed(seed)
@@ -501,13 +524,16 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
 #' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
 #' #Log transform the data 
 #' data <- log2(data + 1)
-#' #Generate weight variances for each genes
-#' weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
-#' #Plot weight variances for top 5,000 genes
-#' #plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
-#' #Plot the change of weight variances for top 5,000 genes
-#' #weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
-#' #plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+#' if(torch::torch_is_installed()) #scDHA need libtorch installed
+#' {
+#'   #Generate weight variances for each genes
+#'   weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
+#'   #Plot weight variances for top 5,000 genes
+#'   #plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
+#'   #Plot the change of weight variances for top 5,000 genes
+#'   #weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
+#'   #plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
+#' }
 #' }
 #' @export
 scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {

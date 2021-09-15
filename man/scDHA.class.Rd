@@ -41,11 +41,14 @@ set.seed(1)
 idx <- sample.int(nrow(data), size = round(nrow(data)*0.75))
 train.x <- data[idx, ]; train.y <- label[idx]
 test.x <- data[-idx, ]; test.y <- label[-idx]
-#Predict the labels of cells in testing set
-prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, 
-                          ncores = 2, seed = 1)
-#Calculate accuracy of the predictions
-acc <- round(sum(test.y == prediction)/length(test.y), 2)
-print(paste0("Accuracy = ", acc))
+if(torch::torch_is_installed()) #scDHA need libtorch installed
+{
+  #Predict the labels of cells in testing set
+  prediction <- scDHA.class(train = train.x, train.label = train.y, test = test.x, 
+                            ncores = 2, seed = 1)
+  #Calculate accuracy of the predictions
+  acc <- round(sum(test.y == prediction)/length(test.y), 2)
+  print(paste0("Accuracy = ", acc))
+}
 }
 }
