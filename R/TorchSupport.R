@@ -243,6 +243,7 @@ cal.dis <- function(arg) {
   dis <- a2sum$t() + a2sum
   ab <- torch_matmul(a, a$t())
   final.dis <- dis - 2 * ab
+  final.dis$fill_diagonal_(0)
   final.dis <- torch_sqrt(final.dis+1e-6)
   final.dis
 }

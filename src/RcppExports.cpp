@@ -41,7 +41,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // normalize_data_dense
-arma::sp_mat normalize_data_dense(arma::mat& data);
+List normalize_data_dense(arma::mat& data);
 RcppExport SEXP _scDHA_normalize_data_dense(SEXP dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -52,7 +52,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // normalize_data_sparse
-arma::sp_mat normalize_data_sparse(arma::sp_mat& data);
+List normalize_data_sparse(arma::sp_mat& data);
 RcppExport SEXP _scDHA_normalize_data_sparse(SEXP dataSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
