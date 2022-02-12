@@ -34,8 +34,12 @@ wMetaC <- function(nC, hmethod, enN.cluster, minN.cluster, maxN.cluster, sil.thr
   allC = length(R)  #number of all unique labels
 
   cb = combn(allC, 2)  #all possible combinations (n*(n-1)/2)
-  alls = apply(cb, 2, getss, R = R, x = x, w1 = w1)  #calculate the weight s for all combinations
-
+  # alls = apply(cb, 2, getss, R = R, x = x, w1 = w1)  #calculate the weight s for all combinations, slow
+  allk <- lapply(R, function(r) {
+    d = as.numeric(unlist(strsplit(r, "_")))
+    which(nC[,d[2]] == d[1])
+  })
+  alls = apply(cb, 2, getss1, R = R, x = x, w1 = w1, allk = allk)  #calculate the weight s for all combinations
 
   S0 = sparseMatrix(i = cb[1, ], j = cb[2, ], x = alls, dims = c(allC, allC))  #triangle part of the S
   S = S0 + t(S0) + diag(allC)
@@ -133,6 +137,17 @@ getA <- function(rowColor) {
 
 
 
+getss1 <- function(pind, R, x, w1, allk) {
+  # This is to get the element of S
+  intset = intersect(allk[[pind[1]]], allk[[pind[2]]])  #set intersection
+  
+  ss = 0
+  if (length(intset) != 0) {
+    uset = union(allk[[pind[1]]], allk[[pind[2]]])  #set union
+    ss = sum(w1[intset])/sum(w1[uset])
+  }
+  return(ss)
+}
 
 getss <- function(pind, R, x, w1) {
   # This is to get the element of S

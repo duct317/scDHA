@@ -18,7 +18,7 @@ scDHA_dataset <- dataset(
   
   prepare_scDHA_data = function(input) {
     input <- as.matrix(input)
-    torch_tensor(input)
+    torch_tensor(input, dtype = torch_float())
   }
 )
 

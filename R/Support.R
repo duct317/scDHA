@@ -32,7 +32,7 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
   clus.tmp <- clus(tmp,k, nmax = nmax)
   
   nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
-  folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+  folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/1000)))
   for (i in 2:length(folds)) {
     dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
     for (j in 1:nrow(dis.tmp)) {
@@ -80,7 +80,7 @@ clus.louvain <- function(data)
     }
     
     nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
-    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/1000)))
     for (i in 2:length(folds)) {
       dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
       for (j in 1:nrow(dis.tmp)) {

@@ -153,8 +153,8 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
             sim.mat.dis.exp <- exp(-sim.mat.dis)
             diag(sim.mat.dis.exp) <- 0
             
-            output <- model(torch_tensor(data[idx, ]))
-            loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp)), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
+            output <- model(torch_tensor(data[idx, ], dtype = torch_float()))
+            loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp), dtype = torch_float()), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
             if(as.numeric(torch_isnan(loss)) == 0)
             {
               loss$backward()
@@ -169,7 +169,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
       
       model$eval()
       with_no_grad({
-        pred <- as.matrix(model$encode_latent(torch_tensor(data))) 
+        pred <- as.matrix(model$encode_latent(torch_tensor(data, dtype = torch_float()))) 
       })
       pred
       
@@ -409,14 +409,36 @@ scDHA.class <- function(train = train, train.label = train.label, test = test, n
     
     clus.tmp <- train.label
     
-    dis.tmp <- 1 - cor(t(tmp1), t(tmp))
+    # dis.tmp <- 1 - cor(t(tmp1), t(tmp))
+    # 
+    # res <- rep(0, nrow(test.p))
+    # 
+    # for (i in 1:nrow(dis.tmp)) {
+    #   tmp2 <- order(dis.tmp[i, ])[1:10]
+    #   tmp3 <- clus.tmp[tmp2]
+    #   if (as.numeric(getmode1(tmp3)[2]) > 0) res[i] <- getmode1(tmp3)[1] else res[i] <- -1
+    # }
+    # res
+    
+    nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
+    if(nrow(tmp1) > 5e3)
+    {
+      folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/1000)))
+    } else {
+      folds <- c(1, nrow(tmp1)) 
+    }
+    for (i in 2:length(folds)) {
+      dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
+      for (j in 1:nrow(dis.tmp)) {
+        nn.tmp[folds[i-1] - 1 + j,   ] <- order(dis.tmp[j,])[1:10]
+      }
+    }
     
     res <- rep(0, nrow(test.p))
-    
-    for (i in 1:nrow(dis.tmp)) {
-      tmp2 <- order(dis.tmp[i, ])[1:10]
+    for (i in 1:nrow(nn.tmp)) {
+      tmp2 <- nn.tmp[i, ]
       tmp3 <- clus.tmp[tmp2]
-      if (as.numeric(getmode1(tmp3)[2]) > 0) res[i] <- getmode1(tmp3)[1] else res[i] <- -1
+      res[i] <- getmode1(tmp3)[1]
     }
     res
   }
