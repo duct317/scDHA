@@ -6,10 +6,12 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - The machine learning framework is changed from Tensorflow to Torch. Torch can be called directly from R. Python environment is no longer required. 
 
 # How to install:
-- The package can be installed from this repository.
-- Install devtools: `utils::install.packages('devtools')`
-- Install the package using: `devtools::install_github('duct317/scDHA')`  
-  Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
+- The package can be installed from CRAN or this repository.  
+- Using CRAN: `install.packages('scDHA')`  
+- Using devtools:  
+  - Install devtools: `utils::install.packages('devtools')`
+  - Install the package using: `devtools::install_github('duct317/scDHA')`  
+    Or, install with manual and vignette: `devtools::install_github('duct317/scDHA', build_manual = T, build_vignettes = T)`
 - When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`  
   `libtorch` can be installed using: `torch::install_torch()`
 
