@@ -149,52 +149,46 @@ nclusterPar <- function(data, nmax = 10)
 
 clustercom2 <- function(result)
 {
-  test <- matrix(0, ncol = length(result$all),nrow = length(result$all))
-  for (i in 1:length(result$all)) {
-    for (j in 1:length(result$all)) {
+  test <- matrix(0, ncol = length(result$all), nrow = length(result$all))
+  for (i in seq(length(result$all))) {
+    for (j in seq(length(result$all))) {
       if (i != j)  test[i,j] <- adjustedRandIndex(result$all[[i]],result$all[[j]])
     }
   }
-  for (i in 1:length(result$all)) {
-    test[i,i] <- mean(test[-i,i])
+  for (i in seq(length(result$all))) {
+    test[i, i] <- mean(test[-i, i])
   }
-
+  
   found <- FALSE
-  if(sum(test < 0.7) >0)
-  {
+  if (sum(test < 0.7) > 0) {
     i <- 2
-  } else
-  {
+  } else {
     i <- 1
   }
-  while(!found )
-  {
-    k <- kmeans(test,i,nstart = 100, iter.max = 5e3)$cluster
+  while (!found) {
+    k <- kmeans(test, i, nstart = 100, iter.max = 5e3)$cluster
     max <- 0
     for (c in unique(k)) {
       score <- mean(test[which(k == c), which(k == c)])
-      if (score > max  & length(which(k == c)) > 1)
-      {
+      if (score > max & length(which(k == c)) > 1) {
         max <- score
         idx <- which(k == c)
       }
     }
-    if (max > 0.8) found <- TRUE
-    if (i > 3) found <- TRUE
+    if (max > 0.8)
+      found <- TRUE
+    if (i > 3)
+      found <- TRUE
     i <- i + 1
   }
-
   res <- t(data.frame(result$all))
-  res <- res[idx,]
-  cl.max <- floor(mean(apply(res, 1, function(x) length(unique(x)))) +0.5 )
-
+  res <- res[idx, ]
+  cl.max <- floor(mean(apply(res, 1, function(x) length(unique(x)))) + 0.5)
   res <- data.frame(result$all)
-
-  da = apply(res,1, paste, collapse="#")
-  indUnique = which(!duplicated(da))
-  indAll = match(da, da[indUnique])
-
-  da <- res[indUnique,]
+  da <- apply(res, 1, paste, collapse = "#")
+  indUnique <- which(!duplicated(da))
+  indAll <- match(da, da[indUnique])
+  da <- res[indUnique, ]
   if (length(indUnique) < 1e3)
   {
     n <- 1e3 - length(indUnique)
@@ -202,9 +196,7 @@ clustercom2 <- function(result)
     tmp <- res[idx,]
     da <- rbind(da,tmp)
   }
-
-  test <- wMetaC(da, (cl.max + 1), hmethod = "ward.D") #
-
+  test <- wMetaC(da, (cl.max + 1), hmethod = "ward.D")
   test$finalC[indAll]
 }
 
