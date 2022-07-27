@@ -152,13 +152,13 @@ clustercom2 <- function(result)
   test <- matrix(0, ncol = length(result$all), nrow = length(result$all))
   for (i in seq(length(result$all))) {
     for (j in seq(length(result$all))) {
-      if (i != j)  test[i,j] <- adjustedRandIndex(result$all[[i]],result$all[[j]])
+      if (i != j)
+        test[i, j] <- adjustedRandIndex(result$all[[i]], result$all[[j]])
     }
   }
   for (i in seq(length(result$all))) {
     test[i, i] <- mean(test[-i, i])
   }
-  
   found <- FALSE
   if (sum(test < 0.7) > 0) {
     i <- 2
