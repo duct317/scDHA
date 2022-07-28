@@ -137,7 +137,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
           optimizer$step()
           optimizer$zero_grad()
           with_no_grad({
-            model$fc1$weight$copy_(model$fc1$weight$data()$clamp(min=0))
+            model$fc1$weight$clamp_min_(0)
           })
         })
       }
