@@ -114,6 +114,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
       
       torch::torch_set_num_threads(ifelse(nrow(data.en) < 1e3, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
+      RhpcBLASctl::omp_set_num_threads(1)
 
       model <- scDHA_model_vis(ncol(data.en), ncol(data.list[[1]]$y1))
 
@@ -278,6 +279,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 #' @export
 scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(ncores, 4))
+  RhpcBLASctl::omp_set_num_threads(min(ncores, 4))
   lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.75)
   if(length(lat.idx) == 0) lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.5)
   tmp.list <- lapply(lat.idx, function(i) sc$all.latent[[i]])

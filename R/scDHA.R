@@ -42,6 +42,7 @@
 
 scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5e3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
+  RhpcBLASctl::omp_set_num_threads(min(2, ncores))
   K = 3
   if(is.null(colnames(data))) keep.genes <- seq(ncol(data)) else keep.genes <- colnames(data)
   if(!method %in% c("scDHA", "louvain"))
@@ -107,6 +108,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       
       torch::torch_set_num_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
+      RhpcBLASctl::omp_set_num_threads(1)
       
       if(in_test())
       {
@@ -183,6 +185,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     
     torch::torch_set_num_threads(ifelse(nrow(da) < 1e3 | ncores.ind == 1, 1, 2))
     RhpcBLASctl::blas_set_num_threads(1)
+    RhpcBLASctl::omp_set_num_threads(1)
     
     if(in_test())
     {
@@ -365,6 +368,7 @@ scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3,
     x <- NULL
     result$all <- foreach(x = latent) %dopar% {
       RhpcBLASctl::blas_set_num_threads(1)
+      RhpcBLASctl::omp_set_num_threads(1)
       if(method == "louvain")
       {
         set.seed(seed)
@@ -435,6 +439,7 @@ scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3,
 #' @export
 scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
+  RhpcBLASctl::omp_set_num_threads(min(2, ncores))
   K = 3
   sample.prob = NULL
   do.clus = TRUE
