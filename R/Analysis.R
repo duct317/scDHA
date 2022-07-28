@@ -49,7 +49,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 
   tmp.data <- sc$latent
   
-  if(nrow(tmp.data > 50000)) {
+  if(nrow(tmp.data > 50e3)) {
     tmp <- find_nn(tmp.data, 11L)
     D <- tmp$dist[, 2:11]
     D[D==0] <- min(D[D!=0])
@@ -74,7 +74,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
   
   idx.main <- 1:nrow(data.en)
   
-  tmp.idx <- createFolds(idx.main, k = ceiling(nrow(data.en)/5000)  )
+  tmp.idx <- createFolds(idx.main, k = ceiling(nrow(data.en)/5e3)  )
   if(length(tmp.idx) > 1) {
     for (i in 1:(length(tmp.idx) - 1) ) {
       tmp.idx[[i]] <- c(tmp.idx[[i]], sample(tmp.idx[[i+1]], ceiling(length(tmp.idx[[i]])/10 ) ) )
@@ -112,8 +112,9 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
         torch_manual_seed((seed+i))
       } 
       
-      torch::torch_set_num_threads(ifelse(nrow(data.en) < 1000, 1, 2))
+      torch::torch_set_num_threads(ifelse(nrow(data.en) < 1e3, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
+      RhpcBLASctl::omp_set_num_threads(1)
 
       model <- scDHA_model_vis(ncol(data.en), ncol(data.list[[1]]$y1))
 
@@ -153,8 +154,8 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
             sim.mat.dis.exp <- exp(-sim.mat.dis)
             diag(sim.mat.dis.exp) <- 0
             
-            output <- model(torch_tensor(data[idx, ]))
-            loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp)), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
+            output <- model(torch_tensor(data[idx, ], dtype = torch_float()))
+            loss <- torch_mean(model_loss(torch_tensor(sim.mat.dis.exp / rowSums2(sim.mat.dis.exp), dtype = torch_float()), output[[1]])) + nnf_binary_cross_entropy(output[[2]], torch_tensor(y1[idx, ]), reduction = "mean")
             if(as.numeric(torch_isnan(loss)) == 0)
             {
               loss$backward()
@@ -169,7 +170,7 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
       
       model$eval()
       with_no_grad({
-        pred <- as.matrix(model$encode_latent(torch_tensor(data))) 
+        pred <- as.matrix(model$encode_latent(torch_tensor(data, dtype = torch_float()))) 
       })
       pred
       
@@ -278,11 +279,12 @@ scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
 #' @export
 scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(ncores, 4))
+  RhpcBLASctl::omp_set_num_threads(min(ncores, 4))
   lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.75)
   if(length(lat.idx) == 0) lat.idx <- which(sapply(sc$all.res, function(x) adjustedRandIndex(x, sc$cluster)) > 0.5)
   tmp.list <- lapply(lat.idx, function(i) sc$all.latent[[i]])
   
-  if(nrow(tmp.list[[1]]) <= 5000)
+  if(nrow(tmp.list[[1]]) <= 5e3)
   {
     set.seed(seed)
     all.res <- sc$all.res
@@ -337,7 +339,7 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   
   t.final <- rowMeans2(t.final)
   
-  if(nrow(tmp.list.or[[1]]) > 5000)
+  if(nrow(tmp.list.or[[1]]) > 5e3)
   {
     tmp <- rep(0, nrow(tmp.list.or[[1]]))
     tmp[idx.all] <- t.final
@@ -409,14 +411,25 @@ scDHA.class <- function(train = train, train.label = train.label, test = test, n
     
     clus.tmp <- train.label
     
-    dis.tmp <- 1 - cor(t(tmp1), t(tmp))
+    nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
+    if(nrow(tmp1) > 10e3)
+    {
+      folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/10e3)))
+    } else {
+      folds <- c(1, nrow(tmp1)) 
+    }
+    for (i in 2:length(folds)) {
+      dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
+      for (j in 1:nrow(dis.tmp)) {
+        nn.tmp[folds[i-1] - 1 + j,   ] <- order(dis.tmp[j,])[1:10]
+      }
+    }
     
     res <- rep(0, nrow(test.p))
-    
-    for (i in 1:nrow(dis.tmp)) {
-      tmp2 <- order(dis.tmp[i, ])[1:10]
+    for (i in 1:nrow(nn.tmp)) {
+      tmp2 <- nn.tmp[i, ]
       tmp3 <- clus.tmp[tmp2]
-      if (as.numeric(getmode1(tmp3)[2]) > 0) res[i] <- getmode1(tmp3)[1] else res[i] <- -1
+      res[i] <- getmode1(tmp3)[1]
     }
     res
   }

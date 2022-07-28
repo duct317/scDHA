@@ -7,7 +7,8 @@ scDHA_dataset <- dataset(
     self$data <- self$prepare_scDHA_data(input)
   },
   
-  .getitem = function(index) {
+  .getbatch = function(index) {
+    
     x <- self$data[index, ]
     list(x)
   },
@@ -18,7 +19,7 @@ scDHA_dataset <- dataset(
   
   prepare_scDHA_data = function(input) {
     input <- as.matrix(input)
-    torch_tensor(input)
+    torch_tensor(input, dtype = torch_float())
   }
 )
 
@@ -243,6 +244,7 @@ cal.dis <- function(arg) {
   dis <- a2sum$t() + a2sum
   ab <- torch_matmul(a, a$t())
   final.dis <- dis - 2 * ab
+  final.dis$fill_diagonal_(0)
   final.dis <- torch_sqrt(final.dis+1e-6)
   final.dis
 }
@@ -294,22 +296,12 @@ scDHA_model_vis <- nn_module(
   }
 )
 
-# check_grad_nan <- function(parameters) {
-#   if (is(parameters, "torch_tensor"))
-#     parameters <- list(parameters)
-#   parameters <- Filter(function(x) !is_undefined_tensor(x$grad), parameters)
-#   for (p in parameters) {
-#     if(as.numeric(torch_sum(torch_isnan(p$grad$data()))) != 0) return(TRUE)
-#   }
-#   FALSE
-# }
-
 check_grad_nan <- function(parameters) {
   if (is(parameters, "torch_tensor"))
     parameters <- list(parameters)
   parameters <- Filter(function(x) !is_undefined_tensor(x$grad), parameters)
   for (p in parameters) {
-    if(as.numeric(torch_isnan(p$grad$data())$any())) return(TRUE)
+    if(p$grad$sum()$isnan()$item()) return(TRUE)
   }
   FALSE
 }

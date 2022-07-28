@@ -40,9 +40,11 @@
 #' @export
 
 
-scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
+scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5e3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
+  RhpcBLASctl::omp_set_num_threads(min(2, ncores))
   K = 3
+  if(is.null(colnames(data))) keep.genes <- seq(ncol(data)) else keep.genes <- colnames(data)
   if(!method %in% c("scDHA", "louvain"))
   {
     stop("'method' should be one of 'scDHA', or 'louvain'")
@@ -72,14 +74,12 @@ scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5
     }
     data <- normalize_data_dense(data)
   }
+  keep.genes <- keep.genes[data$idx]
+  data <- data$data
   data@x[is.na(data@x)] <- 0
   gc()
-  if(nrow(data) >= 50000)
-  {
-    res <- scDHA.big(data = data, k = k, method = method, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
-  } else {
-    res <- scDHA.small(data = data, k = k, method = method, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
-  }
+  res <- scDHA.basic(data = data, k = k, method = method, K = K, n = n, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
+  res$keep.genes <- keep.genes[res$keep.genes]
   res
 }
 
@@ -108,6 +108,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       
       torch::torch_set_num_threads(ifelse(nrow(data.tmp) < 1000 | ncores.ind == 1, 1, 2))
       RhpcBLASctl::blas_set_num_threads(1)
+      RhpcBLASctl::omp_set_num_threads(1)
       
       if(in_test())
       {
@@ -124,7 +125,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
       
       for (epoch in 1:epochs) {
         optimizer$zero_grad()
-        for (b in enumerate(dl)) {
+        coro::loop(for (b in dl) {
           output <- model(b[[1]])
           loss <- torch::nnf_mse_loss(output, b[[1]])
           loss$backward()
@@ -138,7 +139,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
           with_no_grad({
             model$fc1$weight$copy_(model$fc1$weight$data()$clamp(min=0))
           })
-        }
+        })
       }
 
       W <- t(as.matrix(model$fc1$weight))
@@ -169,18 +170,22 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
       torch_manual_seed((seed+i))
     } 
     
-    if(nrow(or.da) >= 50000)
+    if(nrow(or.da) >= 50e3)
     {
-      da <- as.matrix(or.da[sample.int(nrow(or.da), 5000, replace = FALSE, prob = sample.prob),])
+      da <- or.da[sample.int(nrow(or.da), 5e3, replace = FALSE, prob = sample.prob),]
       batch_size <- round(nrow(da)/50)
-    } else if(nrow(or.da) > 2000)
+    } else if(nrow(or.da) > 2e3)
     {
-      da <- as.matrix(or.da[sample.int(nrow(or.da), 2000, replace = FALSE, prob = sample.prob),])
+      da <- or.da[sample.int(nrow(or.da), 2e3, replace = FALSE, prob = sample.prob),]
       batch_size <- round(nrow(da)/50)
+    } else {
+      da <- or.da
+      batch_size <- max(round(nrow(da)/50),2)
     }
     
-    torch::torch_set_num_threads(ifelse(nrow(da) < 1000 | ncores.ind == 1, 1, 2))
+    torch::torch_set_num_threads(ifelse(nrow(da) < 1e3 | ncores.ind == 1, 1, 2))
     RhpcBLASctl::blas_set_num_threads(1)
+    RhpcBLASctl::omp_set_num_threads(1)
     
     if(in_test())
     {
@@ -197,7 +202,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     optimizer <- optim_adamw(model$parameters, lr = lr[1], weight_decay = wdecay, eps = 1e-7)
     for (epoch in 1:epochs[1]) {
       optimizer$zero_grad()
-      for (b in enumerate(dl)) {
+      coro::loop(for (b in dl) {
         output <- model(b[[1]])
         loss <- torch_mean(torch_abs(output[[3]] - b[[1]])) + torch_mean(torch_abs(output[[4]] - b[[1]]))
         loss$backward()
@@ -208,7 +213,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         }
         optimizer$step()
         optimizer$zero_grad()
-      }
+      })
     }
     
     vae_loss <- function(x, x_pred, z_mu, z_var, beta){
@@ -222,7 +227,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     optimizer <- optim_adamw(model$parameters, lr = lr[2], weight_decay = wdecay, eps = 1e-7)
     for (epoch in 1:epochs[2]) {
       optimizer$zero_grad()
-      for (b in enumerate(dl)) {
+      coro::loop(for (b in dl) {
         output <- model(b[[1]])
         loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
         loss$backward()
@@ -233,17 +238,17 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         }
         optimizer$step()
         optimizer$zero_grad()
-      }
+      })
     }
 
     predict_on_sparse <- function(data, model, latent_dim)
     {
-      folds <- round(seq(1, nrow(data), length.out = round(nrow(data)/10000)))
+      folds <- round(seq(1, nrow(data), length.out = round(nrow(data)/10e3)))
       tmp <- matrix(ncol = latent_dim, nrow = nrow(data))
       
       for (i in 2:length(folds)) {
         with_no_grad({
-          tmp[folds[i-1]:folds[i], ] <- as.matrix(model$encode_mu(torch_tensor(as.matrix(data[folds[i-1]:folds[i], ]))))
+          tmp[folds[i-1]:folds[i], ] <- as.matrix(model$encode_mu(torch_tensor(as.matrix(data[folds[i-1]:folds[i], ]), dtype = torch_float())))
         })
       }
       tmp
@@ -253,7 +258,7 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
     for (ite in 1:ens) {
       model$train()
       optimizer$zero_grad()
-      for (b in enumerate(dl)) {
+      coro::loop(for (b in dl) {
         output <- model(b[[1]])
         loss <- vae_loss(b[[1]], output[[3]], output[[1]], output[[2]], beta) + vae_loss(b[[1]], output[[4]], output[[1]], output[[2]], beta)
         loss$backward()
@@ -264,15 +269,15 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
         }
         optimizer$step()
         optimizer$zero_grad()
-      }
+      })
       
       model$eval()
-      if(nrow(or.da) > 20000)
+      if(nrow(or.da) > 20e3)
       {
         tmp <- predict_on_sparse(or.da, model, latent_dim)
       } else {
         with_no_grad({
-          tmp <- as.matrix(model$encode_mu(torch_tensor(as.matrix(or.da))))
+          tmp <- as.matrix(model$encode_mu(torch_tensor(as.matrix(or.da), dtype = torch_float())))
         })
       }
       latent.tmp[[length(latent.tmp)+1]] <- tmp
@@ -283,35 +288,45 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
   latent
 }
 
-scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
+scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
   set.seed(seed)
-  
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
-  wdecay <- c(1e-6, 1e-3)
   batch_size <- max(round(nrow(data)/50),2)
   epochs <- c(10,20)
-  
-  lr <- rep(5e-4, 2) 
   gen_fil <- (gen_fil & (ncol(data) > n))
   n <- ifelse(gen_fil, min(n, ncol(data)), ncol(data))
   epsilon_std <- 0.25
-  beta <- 100
   ens  <-  3
-  
-  intermediate_dim = 64
-  latent_dim = 15
+  if(nrow(data) >= 50e3) {
+    wdecay <- c(1e-4, 1e-2)
+    lr <- rep(1e-3, 2) 
+    beta <- 50
+    intermediate_dim = 64
+    latent_dim = 25
+  } else {
+    wdecay <- c(1e-6, 1e-3)
+    lr <- rep(5e-4, 2) 
+    beta <- 100
+    intermediate_dim = 64
+    latent_dim = 15
+  }
   
   #Feature selection
   if (gen_fil) {
     data.list <- lapply(seq(3), function(i) {
       if(!is.null(seed)) set.seed((seed+i))
-      if(nrow(data) > 2000)
+      if(nrow(data) >= 50e3)
       {
-        ind <- sample.int(nrow(data), 2000, replace = FALSE, prob = sample.prob)
+        ind <- sample.int(nrow(data), 5e3, replace = FALSE, prob = sample.prob)
       } else {
-        ind <- seq(nrow(data))
-      }
+        if(nrow(data) > 2e3)
+        {
+          ind <- sample.int(nrow(data), 2e3, replace = FALSE, prob = sample.prob)
+        } else {
+          ind <- seq(nrow(data))
+        }
+      } 
       data.tmp <- as.matrix(data[ind,])
       data.tmp
     })
@@ -320,13 +335,15 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
     
     keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
     
-    da <- data[,keep]
-    original_dim_reduce <- ncol(da)
-    or.da <- da
+    da <- 0
+    or.da <- data[,keep]
+    original_dim_reduce <- ncol(or.da)
   } else {
-    da <- data
-    original_dim_reduce <- ncol(da)
-    or.da <- da
+    keep <- seq(ncol(data))
+    
+    da <- 0
+    or.da <- data
+    original_dim_reduce <- ncol(or.da)
   }
   
   #Latent generation
@@ -351,12 +368,25 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
     x <- NULL
     result$all <- foreach(x = latent) %dopar% {
       RhpcBLASctl::blas_set_num_threads(1)
-      set.seed(seed)
-      if (nrow(x) > 5000)
+      RhpcBLASctl::omp_set_num_threads(1)
+      if(method == "louvain")
       {
-        cluster <- clus.big(x , k = k)
+        set.seed(seed)
+        cluster <- as.numeric(factor(clus.louvain(x)))
       } else {
-        cluster <- clus(x, k = k)
+        set.seed(seed)
+        if(nrow(x) >= 50e3)
+        {
+          cluster <- clus.big(x, k = k, n = 5e3, nmax = 15)
+          cluster <- as.numeric(factor(cluster))
+        } else {
+          if (nrow(x) > 5e3)
+          {
+            cluster <- clus.big(x , k = k)
+          } else {
+            cluster <- clus(x, k = k)
+          }
+        }
       }
       cluster
     }
@@ -368,143 +398,14 @@ scDHA.small <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000
     g.en <- latent[[which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))]]
     final <- as.numeric(factor(final))
     
-    if(method == "louvain")
-    {
-      idx <- which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))
-      
-      cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
-      doParallel::registerDoParallel(cl, cores = ncores)
-      parallel::clusterEvalQ(cl,{
-        library(scDHA)
-      })
-      result$all <- foreach(x = latent) %dopar% {
-        RhpcBLASctl::blas_set_num_threads(1)
-        set.seed(seed)
-        cluster <- clus.louvain(x)
-        cluster
-      }
-      parallel::stopCluster(cl)
-      final <- as.numeric(factor(result$all[[idx]]))
-    }
-    
     list( cluster = final,
           latent = g.en,
           all.latent = latent,
-          all.res = result$all)
+          all.res = result$all, 
+          keep.genes = keep)
   } else {
     list( all.latent = latent,
-          keep = colnames(or.da))
-  }
-  
-}
-
-scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
-  set.seed(seed)
-  
-  ncores.ind <- as.integer(max(1,floor(ncores/K)))
-  original_dim <- ncol(data)
-  wdecay <- c(1e-4, 1e-2)
-  batch_size <- max(round(nrow(data)/50),2)
-  epochs <- c(10,20)
-  
-  lr <- rep(1e-3, 2) 
-  gen_fil <- (gen_fil & (ncol(data) > n))
-  n <- ifelse(gen_fil, min(n, ncol(data)), ncol(data))
-  epsilon_std <- 0.25
-  beta <- 50
-  ens  <-  3
-  
-  intermediate_dim = 64
-  latent_dim = 25
-  
-  #Feature selection
-  if (gen_fil) {
-    data.list <- lapply(1:3, function(i) {
-      if(!is.null(seed)) set.seed((seed+i))
-      ind <- sample.int(nrow(data), 5000, replace = FALSE, prob = sample.prob)
-      data.tmp <- as.matrix(data[ind,])
-      data.tmp
-    })
-    
-    or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay[1], seed = seed)
-    
-    keep <- which(or > quantile(or,(1-min(n,original_dim)/original_dim)))
-    
-    da <- 0
-    or.da <- data[,keep]
-    original_dim_reduce <- ncol(or.da)
-  } else {
-    da <- 0
-    or.da <- data
-    original_dim_reduce <- ncol(or.da)
-  }
-  rm(data)
-  gc(reset = TRUE)
-  
-  #Latent generation
-  latent <- latent.generating(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay[2], ncores.ind, ncores, sample.prob, seed)
-  
-  gc(reset = TRUE)
-  
-  latent.save <- latent
-  latent <- list()
-  for (i in 1:K) {
-    latent <- c(latent, latent.save[[i]])
-  }
-  
-  if (do.clus) {
-    result <- list()
-    cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
-    doParallel::registerDoParallel(cl, cores = ncores)
-    parallel::clusterEvalQ(cl,{
-      library(scDHA)
-    })
-
-    result$all <- foreach(x = latent) %dopar% {
-      RhpcBLASctl::blas_set_num_threads(1)
-      set.seed(seed)
-      cluster <- clus.big(x, k = k, n = 5000, nmax = 15)
-      
-      cluster <- as.numeric(factor(cluster))
-      
-      cluster
-    }
-    parallel::stopCluster(cl)
-    
-    set.seed(seed)
-    
-    final <- clustercom2(result)
-    g.en <- latent[[which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))]]
-    final <- as.numeric(factor(final))
-    
-    if(method == "louvain")
-    {
-      idx <- which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))
-      
-      cl <- parallel::makeCluster(ncores, outfile = "/dev/null")
-      doParallel::registerDoParallel(cl, cores = ncores)
-      parallel::clusterEvalQ(cl,{
-        library(scDHA)
-      })
-      x <- NULL
-      result$all <- foreach(x = latent) %dopar% {
-        RhpcBLASctl::blas_set_num_threads(1)
-        set.seed(seed)
-        cluster <- clus.louvain(x)
-        cluster
-      }
-      parallel::stopCluster(cl)
-      final <- as.numeric(factor(result$all[[idx]]))
-    }
-
-    list( cluster = final,
-          latent = g.en,
-          all.latent = latent,
-          all.res = result$all)
-  } else {
-    list( all.latent = latent,
-          keep = colnames(or.da))
+          keep.genes = keep)
   }
   
 }
@@ -538,6 +439,7 @@ scDHA.big <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5000, 
 #' @export
 scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {
   RhpcBLASctl::blas_set_num_threads(min(2, ncores))
+  RhpcBLASctl::omp_set_num_threads(min(2, ncores))
   K = 3
   sample.prob = NULL
   do.clus = TRUE
@@ -651,4 +553,5 @@ scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TR
   {
     packageStartupMessage("libtorch is not installed. Use `torch::install_torch()` to download and install libtorch")
   }
+  options(torch.old_seed_behavior=TRUE)
 }

@@ -6,9 +6,9 @@
 clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
 {
   if (is.null(k)) k <- nclusterPar(data, nmax = nmax) #, ncore = ncore
-  if (nrow(data) < 1000 & (k < 5))
+  if (nrow(data) < 1e3 & (k < 5))
   {
-    k <- kmeans(data, k, nstart = 1000, iter.max = 1000)
+    k <- kmeans(data, k, nstart = 1e3, iter.max = 1e3)
     k$cluster
   } else
   {
@@ -22,7 +22,7 @@ clus <- function(data, k = NULL, nmax = 10) #, ncore = 2
 
 }
 
-clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
+clus.big <- function(data, k = NULL, n = 2e3, nmax = 10) #, ncore = 2
 {
   ind <- sample.int(nrow(data), n)
   ind1 <- (1:nrow(data))[-ind]
@@ -32,7 +32,12 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
   clus.tmp <- clus(tmp,k, nmax = nmax)
   
   nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
-  folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+  if(nrow(tmp1) > 10e3)
+  {
+    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/10e3)))
+  } else {
+    folds <- c(1, nrow(tmp1)) 
+  }
   for (i in 2:length(folds)) {
     dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
     for (j in 1:nrow(dis.tmp)) {
@@ -55,7 +60,7 @@ clus.big <- function(data, k = NULL, n = 2000, nmax = 10) #, ncore = 2
 
 clus.louvain <- function(data)
 {
-  if(nrow(data) <= 10000)
+  if(nrow(data) <= 10e3)
   {
     n <- nrow(data)
     nn <- 30
@@ -80,7 +85,12 @@ clus.louvain <- function(data)
     }
     
     nn.tmp <- matrix(ncol = 10, nrow = nrow(tmp1))
-    folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(data)/1000)))
+    if(nrow(tmp1) > 10e3)
+    {
+      folds <- round(seq(1, nrow(tmp1), length.out = ceiling(nrow(tmp1)/10e3)))
+    } else {
+      folds <- c(1, nrow(tmp1)) 
+    }
     for (i in 2:length(folds)) {
       dis.tmp <- 1 - cor(t(tmp1[folds[i-1]:folds[i], ]), t(tmp))
       for (j in 1:nrow(dis.tmp)) {
@@ -139,62 +149,54 @@ nclusterPar <- function(data, nmax = 10)
 
 clustercom2 <- function(result)
 {
-  test <- matrix(0, ncol = length(result$all),nrow = length(result$all))
-  for (i in 1:length(result$all)) {
-    for (j in 1:length(result$all)) {
-      if (i != j)  test[i,j] <- adjustedRandIndex(result$all[[i]],result$all[[j]])
+  test <- matrix(0, ncol = length(result$all), nrow = length(result$all))
+  for (i in seq(length(result$all))) {
+    for (j in seq(length(result$all))) {
+      if (i != j)
+        test[i, j] <- adjustedRandIndex(result$all[[i]], result$all[[j]])
     }
   }
-  for (i in 1:length(result$all)) {
-    test[i,i] <- mean(test[-i,i])
+  for (i in seq(length(result$all))) {
+    test[i, i] <- mean(test[-i, i])
   }
-
   found <- FALSE
-  if(sum(test < 0.7) >0)
-  {
+  if (sum(test < 0.7) > 0) {
     i <- 2
-  } else
-  {
+  } else {
     i <- 1
   }
-  while(!found )
-  {
-    k <- kmeans(test,i,nstart = 100, iter.max = 5000)$cluster
+  while (!found) {
+    k <- kmeans(test, i, nstart = 100, iter.max = 5e3)$cluster
     max <- 0
     for (c in unique(k)) {
       score <- mean(test[which(k == c), which(k == c)])
-      if (score > max  & length(which(k == c)) > 1)
-      {
+      if (score > max & length(which(k == c)) > 1) {
         max <- score
         idx <- which(k == c)
       }
     }
-    if (max > 0.8) found <- TRUE
-    if (i > 3) found <- TRUE
+    if (max > 0.8)
+      found <- TRUE
+    if (i > 3)
+      found <- TRUE
     i <- i + 1
   }
-
   res <- t(data.frame(result$all))
-  res <- res[idx,]
-  cl.max <- floor(mean(apply(res, 1, function(x) length(unique(x)))) +0.5 )
-
+  res <- res[idx, ]
+  cl.max <- floor(mean(apply(res, 1, function(x) length(unique(x)))) + 0.5)
   res <- data.frame(result$all)
-
-  da = apply(res,1, paste, collapse="#")
-  indUnique = which(!duplicated(da))
-  indAll = match(da, da[indUnique])
-
-  da <- res[indUnique,]
-  if (length(indUnique) < 1000)
+  da <- apply(res, 1, paste, collapse = "#")
+  indUnique <- which(!duplicated(da))
+  indAll <- match(da, da[indUnique])
+  da <- res[indUnique, ]
+  if (length(indUnique) < 1e3)
   {
-    n <- 1000 - length(indUnique)
+    n <- 1e3 - length(indUnique)
     idx <- sample(1:nrow(res), n ,replace = TRUE)
     tmp <- res[idx,]
     da <- rbind(da,tmp)
   }
-
-  test <- wMetaC(da, (cl.max + 1), hmethod = "ward.D") #
-
+  test <- wMetaC(da, (cl.max + 1), hmethod = "ward.D")
   test$finalC[indAll]
 }
 

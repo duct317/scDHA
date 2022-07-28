@@ -140,7 +140,7 @@ arma::uvec non_zero_index(arma::mat& data) {
 }
 
 // [[Rcpp::export]]
-arma::sp_mat normalize_data_dense(arma::mat& data) {
+List normalize_data_dense(arma::mat& data) {
   arma::rowvec col_sum = zeros<rowvec>(data.n_cols);
   
   for (size_t i = 0; i < data.n_cols; i++)
@@ -169,11 +169,15 @@ arma::sp_mat normalize_data_dense(arma::mat& data) {
   
   arma::sp_mat result(data);
   
-  return result;
+  List ret;
+  ret["data"] = result;
+  ret["idx"] = idx + 1;
+  
+  return ret;
 }
 
 // [[Rcpp::export]]
-arma::sp_mat normalize_data_sparse(arma::sp_mat& data) {
+List normalize_data_sparse(arma::sp_mat& data) {
   arma::rowvec col_sum = zeros<rowvec>(data.n_cols);
   
   for (size_t i = 0; i < data.n_cols; i++)
@@ -203,5 +207,9 @@ arma::sp_mat normalize_data_sparse(arma::sp_mat& data) {
     data(i.row(), i.col()) = (*i - tmp_min(i.row())) / tmp_sub(i.row());
   }
   
-  return data;
+  List ret;
+  ret["data"] = data;
+  ret["idx"] = idx + 1;
+  
+  return ret;
 }
