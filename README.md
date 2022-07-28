@@ -5,7 +5,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - The package is now available on [CRAN](https://cran.r-project.org/package=scDHA).
 - The machine learning framework is changed from Tensorflow to Torch. Torch can be called directly from R. Python environment is no longer required. 
 
-# How to install:
+# How to install
 - The package can be installed from CRAN or this repository.  
 - Using CRAN: `install.packages('scDHA')`  
 - Using devtools:  
@@ -15,7 +15,7 @@ The scDHA software package can perform cell segregation through unsupervised lea
 - When the package is loaded, it will check for the necessary `libtorch`: `library(scDHA)`  
   `libtorch` can be installed using: `torch::install_torch()`
 
-# To run the Goolam example:
+# To run the Goolam example
 - Load the package: `library(scDHA)`
 - Load Goolam dataset: `data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)`
 - Log transform the data: `data <- log2(data + 1)`
@@ -35,5 +35,5 @@ To use our package for new data, the package includes these functions:
 - The result is reproducible by setting seed for these functions.
 - More detail about parameters for each function could be found in the manual.
 
-# Citation:
+# Citation
 Duc Tran, Hung Nguyen, Bang Tran, Carlo La Vecchia, Hung N. Luu, Tin Nguyen (2021). Fast and precise single-cell data analysis using a hierarchical autoencoder. <i>Nature Communications</i>, <b>12</b>, 1029. doi: 10.1038/s41467-021-21312-2 ([link](https://www.nature.com/articles/s41467-021-21312-2)) 
