@@ -5,6 +5,7 @@
 #' @importFrom foreach %dopar% foreach
 #' @importFrom stats quantile
 #' @importFrom igraph membership
+#' @importFrom coro loop
 #' @title scDHA
 #' @description The main function to perform dimension deduction and clustering.
 #' @param data Gene expression matrix, with rows represent samples and columns represent genes.
@@ -407,133 +408,6 @@ scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3,
     list( all.latent = latent,
           keep.genes = keep)
   }
-  
-}
-
-#' @importFrom graphics plot
-#' @title scDHA.w
-#' @description This function will plot a graph with normalized weights of all genes so user can select the appropriate number of genes to keep.
-#' @param data Gene expression matrix, with rows represent samples and columns represent genes.
-#' @param sparse Boolen variable indicating whether data is a sparse matrix. The input must be a non negative sparse matrix.
-#' @param ncores Number of processor cores to use.
-#' @param seed Seed for reproducibility.
-#' @return A plot with normalized weights of all genes.
-#' @examples
-#' \donttest{
-#' library(scDHA)
-#' #Load example data (Goolam dataset)
-#' data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
-#' #Log transform the data 
-#' data <- log2(data + 1)
-#' if(torch::torch_is_installed()) #scDHA need libtorch installed
-#' {
-#'   #Generate weight variances for each genes
-#'   weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
-#'   #Plot weight variances for top 5,000 genes
-#'   #plot(weight_variance, xlab = "Genes", ylab = "Normalized Weight Variance", xlim=c(1, 5000))
-#'   #Plot the change of weight variances for top 5,000 genes
-#'   #weight_variance_change <- weight_variance[-length(weight_variance)] - weight_variance[-1] 
-#'   #plot(weight_variance_change, xlab = "Genes", ylab = "Weight Variance Change", xlim=c(1, 5000))
-#' }
-#' }
-#' @export
-scDHA.w <- function(data = data, sparse = FALSE, ncores = 10L, seed = NULL) {
-  RhpcBLASctl::blas_set_num_threads(min(2, ncores))
-  RhpcBLASctl::omp_set_num_threads(min(2, ncores))
-  K = 3
-  sample.prob = NULL
-  do.clus = TRUE
-  gen_fil = TRUE
-  k = NULL
-  if(sparse) {
-    if(min(data) < 0) stop("The input must be a non negative sparse matrix.")
-    if(max(data) - min(data) > 100)
-    {
-      data@x <- log2(data@x + 1)
-    }
-    data <- normalize_data_sparse(data)
-  }  else {
-    if(max(data) - min(data) > 100)
-    {
-      if(min(data) < 0)
-      {
-        if(nrow(data) == ncol(data))
-        {
-          data <- t(data)
-          data <- data - matrixStats::rowMins(data)
-          data <- t(data)
-        } else {
-          data <- data - matrixStats::colMins(data)
-        }
-      }
-      data <- log2(data + 1)
-    }
-    data <- normalize_data_dense(data)
-  } 
-  gc()
-  if(nrow(data) >= 50000)
-  {
-    res <- scDHA.big.w(data = data, k = k, K = K, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
-  } else {
-    res <- scDHA.small.w(data = data, k = k, K = K, ncores = ncores, gen_fil = gen_fil, do.clus = do.clus, sample.prob = sample.prob, seed = seed)
-  }
-  w <- res
-  w <- (w - min(w))/(max(w) - min(w))
-  w <- sort(w, decreasing = TRUE)
-  
-  plot(w, xlab = "Genes", ylab = "Normalized Weight Variance")
-  
-  w
-}
-
-scDHA.small.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
-  set.seed(seed)
-  
-  ncores.ind <- as.integer(max(1,floor(ncores/K)))
-  original_dim <- ncol(data)
-  wdecay <- 1e-6
-  batch_size <- max(round(nrow(data)/50),2)
-
-  #Feature selection
-
-  data.list <- lapply(seq(3), function(i) {
-    if(!is.null(seed)) set.seed((seed+i))
-    if(nrow(data) > 2000)
-    {
-      ind <- sample.int(nrow(data), 2000, replace = FALSE, prob = sample.prob)
-    } else {
-      ind <- seq(nrow(data))
-    }
-    data.tmp <- as.matrix(data[ind,])
-    data.tmp
-  })
-  
-  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay, seed = seed)
-
-  or
-  
-}
-
-scDHA.big.w <- function(data = data, k = NULL, K = 3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
-  set.seed(seed)
-  
-  ncores.ind <- as.integer(max(1,floor(ncores/K)))
-  original_dim <- ncol(data)
-  wdecay <- 1e-4
-  batch_size <- max(round(nrow(data)/50),2)
-
-  #Feature selection
-
-  data.list <- lapply(1:3, function(i) {
-    if(!is.null(seed)) set.seed((seed+i))
-    ind <- sample.int(nrow(data), 5000, replace = FALSE, prob = sample.prob)
-    data.tmp <- as.matrix(data[ind,])
-    data.tmp
-  })
-  
-  or <- gene.filtering(data.list = data.list, original_dim = original_dim, batch_size = batch_size, ncores.ind = ncores.ind, ncores = ncores, wdecay = wdecay, seed = seed)
-
-  or
   
 }
 

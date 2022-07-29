@@ -13,21 +13,6 @@ test_that("scDHA can run", {
   expect_equal(length(result$cluster), nrow(data))
 })
 
-test_that("scDHA.w can run", {
-  skip_on_os("windows")
-  skip_on_cran()
-  
-  #Load example data (Goolam dataset)
-  data('Goolam'); data <- t(Goolam$data); label <- as.character(Goolam$label)
-  #Log transform the data 
-  data <- log2(data + 1)
-  non_zero_genes <- sum(colSums(data) != 0)
-  #Generate weight variances for each genes
-  weight_variance <- scDHA.w(data, ncores = 2, seed = 1)
-  expect_is(weight_variance, 'numeric')
-  expect_equal(length(weight_variance), non_zero_genes)
-})
-
 test_that("scDHA.vis can run", {
   #Load preprocessing data
   data("Goolam_result")

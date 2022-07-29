@@ -28,7 +28,6 @@ The scDHA software package can perform cell segregation through unsupervised lea
 # How to use the package for new data 
 To use our package for new data, the package includes these functions:  
 - scDHA: main function, doing dimension reuction and clustering. The input is a matrix with rows as samples and columns as genes.
-- scDHA.w: plot the normalized weight variances to select suitable cutoff for gene filtering (optional).
 - scDHA.vis: visualization. The input is demension reduction output.
 - scDHA.pt: generating pseudotime. The input is demension reduction output.
 - scDHA.class: classification new data using available one. The inputs consist of train data matrix, train data label and new data matrix. 
