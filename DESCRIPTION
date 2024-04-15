@@ -1,12 +1,13 @@
 Package: scDHA
 Type: Package
 Title: Single-Cell Decomposition using Hierarchical Autoencoder 
-Version: 1.2.1
+Version: 1.2.2
 Authors@R: c(
-    person("Duc", "Tran", , "duct@nevada.unr.edu", role = c("aut", "cre")),
-    person("Tin", "Nguyen", role = c("fnd"))
+    person(given = "Ha", family = "Nguyen", email = "hvn0006@auburn.edu", role = c("cre")),
+    person(given = "Duc", family = "Tran", email = "duct@nevada.unr.edu", role = c("aut")),
+    person(given = "Tin", family = "Nguyen", role = c("fnd"))
     )
-Maintainer: Duc Tran <duct@nevada.unr.edu>
+Maintainer: Ha Nguyen <hvn0006@auburn.edu>
 Description: Provides a fast and accurate pipeline for single-cell analyses. 
     The 'scDHA' software package can perform clustering, dimension reduction and visualization, classification, and time-trajectory inference on single-cell data (Tran et.al. (2021) <DOI:10.1038/s41467-021-21312-2>).
 License: GPL-3
@@ -16,7 +17,7 @@ Depends: R (>= 3.4)
 Imports: matrixStats, foreach, doParallel, igraph, Matrix, uwot,
     cluster, Rcpp, RcppParallel, RcppAnnoy, methods, torch (>= 0.3.0), RhpcBLASctl, coro
 LinkingTo: Rcpp, RcppArmadillo, RcppParallel, RcppAnnoy
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.3
 Suggests: 
     testthat,
     knitr,

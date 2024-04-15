@@ -1,8 +1,8 @@
 citHeader("To cite scDHA in publications use:")
 
-citEntry(entry="article",
+bibentry(bibtype="Article",
          title = "Fast and precise single-cell data analysis using a hierarchical autoencoder",
-         author = personList( as.person("Duc Tran"),
+         author = c( as.person("Duc Tran"),
                               as.person("Hung Nguyen"),
                               as.person("Bang Tran"),
                               as.person("Carlo La Vecchia"),
