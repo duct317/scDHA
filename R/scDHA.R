@@ -86,7 +86,7 @@ scDHA <- function(data = data, k = NULL, method = "scDHA", sparse = FALSE, n = 5
 
 in_test <- function() identical(Sys.getenv("IN_TEST_scDHA"), "true")
 
-gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncores, wdecay, seed)
+gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncores, wdecay, seed=NULL)
 {
   or <- list()
   cl <- parallel::makeCluster(min(3, ncores), outfile = "/dev/null")
@@ -155,7 +155,7 @@ gene.filtering <- function(data.list, original_dim, batch_size, ncores.ind, ncor
 }
 
 latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, beta, 
-                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, ncores, sample.prob, seed)
+                              original_dim_reduce, latent_dim, intermediate_dim, epochs, wdecay, ncores.ind, ncores, sample.prob, seed=NULL)
 {
   latent <- list()
   cl <- parallel::makeCluster(min(K, ncores), outfile = "/dev/null")
@@ -290,7 +290,10 @@ latent.generating <- function(da, or.da, batch_size, K, ens, epsilon_std, lr, be
 }
 
 scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3, ncores = 10L, gen_fil = TRUE, do.clus = TRUE, sample.prob = NULL, seed = NULL) {
-  set.seed(seed)
+  if(!is.null(seed)) {
+      set.seed(seed)
+    }
+  # set.seed(seed)
   ncores.ind <- as.integer(max(1,floor(ncores/K)))
   original_dim <- ncol(data)
   batch_size <- max(round(nrow(data)/50),2)
@@ -372,10 +375,16 @@ scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3,
       RhpcBLASctl::omp_set_num_threads(1)
       if(method == "louvain")
       {
-        set.seed(seed)
+        if(!is.null(seed)) {
+          set.seed(seed)
+        }
+        # set.seed(seed)
         cluster <- as.numeric(factor(clus.louvain(x)))
       } else {
-        set.seed(seed)
+        if(!is.null(seed)) {
+          set.seed(seed)
+        }
+        # set.seed(seed)
         if(nrow(x) >= 50e3)
         {
           cluster <- clus.big(x, k = k, n = 5e3, nmax = 15)
@@ -393,7 +402,10 @@ scDHA.basic <- function(data = data, k = NULL, method = "scDHA", K = 3, n = 5e3,
     }
     parallel::stopCluster(cl)
     
-    set.seed(seed)
+    if(!is.null(seed)) {
+      set.seed(seed)
+    }
+    # set.seed(seed)
     
     final <- clustercom2(result)
     g.en <- latent[[which.max(sapply(result$all, function(x) adjustedRandIndex(x,final)))]]

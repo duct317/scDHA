@@ -32,7 +32,10 @@ scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
 {
   if(method == "UMAP")
   {
-    set.seed(seed)
+    if(!is.null(seed)) {
+      set.seed(seed)
+    }
+    # set.seed(seed)
     data <- sc$latent
     pred <- uwot::umap(data, n_threads = ncores)
     sc$pred <- pred
@@ -45,7 +48,10 @@ scDHA.vis <- function(sc = sc, method = "UMAP", ncores = 10L, seed = NULL)
 }
 
 scDHA.vis.old <- function(sc = sc, ncores = 10L, seed = NULL) {
-  set.seed(seed)
+  if(!is.null(seed)) {
+      set.seed(seed)
+    }
+  # set.seed(seed)
 
   tmp.data <- sc$latent
   
@@ -286,11 +292,17 @@ scDHA.pt <- function(sc = sc, start.point = 1, ncores = 10L, seed = NULL) {
   
   if(nrow(tmp.list[[1]]) <= 5e3)
   {
-    set.seed(seed)
+    if(!is.null(seed)) {
+      set.seed(seed)
+    }
+    # set.seed(seed)
     all.res <- sc$all.res
     tmp.list.or <- tmp.list
   } else {
-    set.seed(seed)
+    if(!is.null(seed)) {
+      set.seed(seed)
+    }
+    # set.seed(seed)
     idx.all <- sample.int(nrow(tmp.list[[1]]), 4900)
     if(start.point %in% idx.all)
     {
@@ -402,7 +414,10 @@ scDHA.class <- function(train = train, train.label = train.label, test = test, n
   
   x <- NULL
   result <- foreach(x = latent) %dopar% {
-    set.seed(seed)
+    if(!is.null(seed)) {
+      set.seed(seed)
+    }
+    # set.seed(seed)
     train.p <- x[1:length(train.label), ]
     test.p <- x[(length(train.label) + 1):nrow(x), ]
     
